@@ -37,6 +37,7 @@ dependencies = [
     "google-genai>=1.0.0",
     # Export
     "weasyprint>=62.3",
+    "numpy>=2.4.6",
 ]
 
 [project.optional-dependencies]
