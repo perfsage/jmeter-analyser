@@ -35,15 +35,15 @@ def compute_percentiles(
         f"MIN(elapsed)::BIGINT AS min, MAX(elapsed)::BIGINT AS max, {pct_sql}"
     )
 
-    con = duckdb.connect()
-    con.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
+    with duckdb.connect() as con:
+        con.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
 
-    if groupby_label:
-        sql = f"SELECT label, {base_aggs} FROM samples GROUP BY label ORDER BY label"
-    else:
-        sql = f"SELECT {base_aggs} FROM samples"
+        if groupby_label:
+            sql = f"SELECT label, {base_aggs} FROM samples GROUP BY label ORDER BY label"
+        else:
+            sql = f"SELECT {base_aggs} FROM samples"
 
-    return con.execute(sql).pl()
+        return con.execute(sql).pl()
 
 
 def compute_overall_percentiles(samples_path: Path) -> dict[str, float]:

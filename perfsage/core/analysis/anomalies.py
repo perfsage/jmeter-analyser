@@ -17,19 +17,19 @@ def detect_rt_spikes(
 
     Returns: timestamp_bucket, p95, z_score, is_anomaly.
     """
-    con = duckdb.connect()
-    con.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
+    with duckdb.connect() as con:
+        con.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
 
-    df = con.execute(
-        f"""
-        SELECT to_timestamp((timestamp_ms // 1000 // {bucket_seconds}) * {bucket_seconds})
-                   AS timestamp_bucket,
-               PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY elapsed) AS p95
-        FROM samples
-        GROUP BY timestamp_ms // 1000 // {bucket_seconds}
-        ORDER BY timestamp_bucket
-        """
-    ).pl()
+        df = con.execute(
+            f"""
+            SELECT to_timestamp((timestamp_ms // 1000 // {bucket_seconds}) * {bucket_seconds})
+                       AS timestamp_bucket,
+                   PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY elapsed) AS p95
+            FROM samples
+            GROUP BY timestamp_ms // 1000 // {bucket_seconds}
+            ORDER BY timestamp_bucket
+            """
+        ).pl()
 
     if df.is_empty() or df.shape[0] < 2:
         return df.with_columns(
@@ -57,21 +57,21 @@ def detect_error_spikes(
     min_error_rate: float = 0.05,
 ) -> pl.DataFrame:
     """Return time buckets where error_rate > min_error_rate and is 2× the rolling baseline."""
-    con = duckdb.connect()
-    con.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
+    with duckdb.connect() as con:
+        con.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
 
-    df = con.execute(
-        f"""
-        SELECT to_timestamp((timestamp_ms // 1000 // {bucket_seconds}) * {bucket_seconds})
-                   AS timestamp_bucket,
-               SUM(CASE WHEN NOT success THEN 1 ELSE 0 END)::BIGINT AS error_count,
-               COUNT(*)::BIGINT AS total_count,
-               SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS error_rate
-        FROM samples
-        GROUP BY timestamp_ms // 1000 // {bucket_seconds}
-        ORDER BY timestamp_bucket
-        """
-    ).pl()
+        df = con.execute(
+            f"""
+            SELECT to_timestamp((timestamp_ms // 1000 // {bucket_seconds}) * {bucket_seconds})
+                       AS timestamp_bucket,
+                   SUM(CASE WHEN NOT success THEN 1 ELSE 0 END)::BIGINT AS error_count,
+                   COUNT(*)::BIGINT AS total_count,
+                   SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS error_rate
+            FROM samples
+            GROUP BY timestamp_ms // 1000 // {bucket_seconds}
+            ORDER BY timestamp_bucket
+            """
+        ).pl()
 
     if df.is_empty():
         return df
@@ -92,19 +92,19 @@ def detect_knee_point(
     Finds the point where marginal p90 RT increase exceeds 2× the baseline slope.
     Returns {"knee_rps": float, "knee_p90_ms": float} or None if not detected.
     """
-    con = duckdb.connect()
-    con.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
-
     bucket_seconds = 10
-    rows = con.execute(
-        f"""
-        SELECT COUNT(*) * 1.0 / {bucket_seconds} AS rps,
-               PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY elapsed) AS p90_elapsed
-        FROM samples
-        GROUP BY timestamp_ms // 1000 // {bucket_seconds}
-        ORDER BY rps
-        """
-    ).fetchall()
+    with duckdb.connect() as con:
+        con.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
+
+        rows = con.execute(
+            f"""
+            SELECT COUNT(*) * 1.0 / {bucket_seconds} AS rps,
+                   PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY elapsed) AS p90_elapsed
+            FROM samples
+            GROUP BY timestamp_ms // 1000 // {bucket_seconds}
+            ORDER BY rps
+            """
+        ).fetchall()
 
     if len(rows) < 3:
         return None

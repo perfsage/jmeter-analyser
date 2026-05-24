@@ -51,25 +51,25 @@ def compute_apdex(
     t_ms = t_seconds * 1000.0
     f_ms = f_multiplier * t_ms
 
-    con = duckdb.connect()
-    con.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
+    with duckdb.connect() as con:
+        con.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
 
-    return con.execute(
-        f"""
-        SELECT label,
-               SUM(CASE WHEN elapsed <= {t_ms} THEN 1 ELSE 0 END)::BIGINT AS satisfied,
-               SUM(CASE WHEN elapsed > {t_ms} AND elapsed <= {f_ms} THEN 1 ELSE 0 END)::BIGINT
-                   AS tolerating,
-               SUM(CASE WHEN elapsed > {f_ms} THEN 1 ELSE 0 END)::BIGINT AS frustrated,
-               COUNT(*)::BIGINT AS total,
-               (SUM(CASE WHEN elapsed <= {t_ms} THEN 1 ELSE 0 END)
-                + SUM(CASE WHEN elapsed > {t_ms} AND elapsed <= {f_ms} THEN 1 ELSE 0 END)
-                  * 0.5) * 1.0 / COUNT(*) AS apdex_score
-        FROM samples
-        GROUP BY label
-        ORDER BY label
-        """
-    ).pl()
+        return con.execute(
+            f"""
+            SELECT label,
+                   SUM(CASE WHEN elapsed <= {t_ms} THEN 1 ELSE 0 END)::BIGINT AS satisfied,
+                   SUM(CASE WHEN elapsed > {t_ms} AND elapsed <= {f_ms} THEN 1 ELSE 0 END)::BIGINT
+                       AS tolerating,
+                   SUM(CASE WHEN elapsed > {f_ms} THEN 1 ELSE 0 END)::BIGINT AS frustrated,
+                   COUNT(*)::BIGINT AS total,
+                   (SUM(CASE WHEN elapsed <= {t_ms} THEN 1 ELSE 0 END)
+                    + SUM(CASE WHEN elapsed > {t_ms} AND elapsed <= {f_ms} THEN 1 ELSE 0 END)
+                      * 0.5) * 1.0 / COUNT(*) AS apdex_score
+            FROM samples
+            GROUP BY label
+            ORDER BY label
+            """
+        ).pl()
 
 
 def compute_slo_compliance(
@@ -90,21 +90,21 @@ def compute_slo_compliance(
     try:
         steady_df.write_parquet(tmp_path)
 
-        con = duckdb.connect()
-        con.execute(f"CREATE VIEW steady AS SELECT * FROM read_parquet('{tmp_path}')")
+        with duckdb.connect() as con:
+            con.execute(f"CREATE VIEW steady AS SELECT * FROM read_parquet('{tmp_path}')")
 
-        metrics_df = con.execute(
-            """
-            SELECT label,
-                   PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY elapsed) AS p90,
-                   PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY elapsed) AS p99,
-                   SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) * 100.0 / COUNT(*)
-                       AS error_rate_pct
-            FROM steady
-            GROUP BY label
-            ORDER BY label
-            """
-        ).pl()
+            metrics_df = con.execute(
+                """
+                SELECT label,
+                       PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY elapsed) AS p90,
+                       PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY elapsed) AS p99,
+                       SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) * 100.0 / COUNT(*)
+                           AS error_rate_pct
+                FROM steady
+                GROUP BY label
+                ORDER BY label
+                """
+            ).pl()
 
         apdex_df = compute_apdex(tmp_path, t_seconds=config.apdex_t)
         apdex_map: dict[str, float] = {

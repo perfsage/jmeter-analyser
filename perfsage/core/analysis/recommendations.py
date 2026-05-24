@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -9,6 +10,8 @@ import duckdb
 
 from perfsage.core.analysis.slo import SLOConfig
 from perfsage.core.storage.db import InsightSeverity
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -82,8 +85,8 @@ def run_all_recommendations(
                         data={"label": label, "ratio": ratio, "p50": p50, "p99": p99},
                     )
                 )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Recommendation rule 'tail_latency_ratio' failed: %s", exc)
 
     # 2. Saturation knee
     try:
@@ -100,8 +103,8 @@ def run_all_recommendations(
                     data={"knee_rps": knee["knee_rps"], "knee_p90_ms": knee["knee_p90_ms"]},
                 )
             )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Recommendation rule 'saturation_knee' failed: %s", exc)
 
     # 3. Error spike (any bucket > 10% error rate)
     try:
@@ -118,8 +121,8 @@ def run_all_recommendations(
                         data={"max_error_rate": max_err_f},
                     )
                 )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Recommendation rule 'error_spike' failed: %s", exc)
 
     # 4. SLO violation
     try:
@@ -143,15 +146,15 @@ def run_all_recommendations(
                         },
                     )
                 )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Recommendation rule 'slo_violation' failed: %s", exc)
 
     # 5. Warmup window (INFO)
     try:
         warmup_end_ms, _test_end_ms = detect_warmup_window(samples_path)
-        con = duckdb.connect()
-        con.execute(f"CREATE VIEW s AS SELECT * FROM read_parquet('{samples_path}')")
-        start_row = con.execute("SELECT MIN(timestamp_ms) FROM s").fetchone()
+        with duckdb.connect() as con:
+            con.execute(f"CREATE VIEW s AS SELECT * FROM read_parquet('{samples_path}')")
+            start_row = con.execute("SELECT MIN(timestamp_ms) FROM s").fetchone()
         start_ms = int(start_row[0]) if start_row and start_row[0] is not None else 0
         warmup_duration_s = (warmup_end_ms - start_ms) / 1000.0
         recs.append(
@@ -165,8 +168,8 @@ def run_all_recommendations(
                 data={"warmup_duration_s": warmup_duration_s, "warmup_end_ms": warmup_end_ms},
             )
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Recommendation rule 'warmup_window' failed: %s", exc)
 
     # 6. High variability (CV = std / mean > 1.0)
     try:
@@ -187,29 +190,29 @@ def run_all_recommendations(
                         data={"label": label, "cv": cv, "mean": mean, "std": std},
                     )
                 )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Recommendation rule 'high_variability' failed: %s", exc)
 
     # 7. Cold-start detection: first 30 s error rate >> overall
     try:
-        con2 = duckdb.connect()
-        con2.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
-        row2 = con2.execute(
-            """
-            WITH start_ts AS (SELECT MIN(timestamp_ms) AS start FROM samples),
-            first_30 AS (
-                SELECT SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS err
-                FROM samples, start_ts
-                WHERE timestamp_ms < start + 30000
-            ),
-            overall AS (
-                SELECT SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS err
-                FROM samples
-            )
-            SELECT first_30.err AS first_30_err, overall.err AS overall_err
-            FROM first_30, overall
-            """
-        ).fetchone()
+        with duckdb.connect() as con2:
+            con2.execute(f"CREATE VIEW samples AS SELECT * FROM read_parquet('{samples_path}')")
+            row2 = con2.execute(
+                """
+                WITH start_ts AS (SELECT MIN(timestamp_ms) AS start FROM samples),
+                first_30 AS (
+                    SELECT SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS err
+                    FROM samples, start_ts
+                    WHERE timestamp_ms < start + 30000
+                ),
+                overall AS (
+                    SELECT SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS err
+                    FROM samples
+                )
+                SELECT first_30.err AS first_30_err, overall.err AS overall_err
+                FROM first_30, overall
+                """
+            ).fetchone()
         if row2 and row2[0] is not None and row2[1] is not None:
             first_30_err = float(row2[0])
             overall_err = float(row2[1])
@@ -228,8 +231,8 @@ def run_all_recommendations(
                         },
                     )
                 )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Recommendation rule 'cold_start_detected' failed: %s", exc)
 
     recs.sort(key=lambda r: _SEVERITY_ORDER.get(r.severity, 99))
     return recs
