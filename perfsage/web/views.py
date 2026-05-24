@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -13,7 +14,6 @@ from fastapi.templating import Jinja2Templates
 from perfsage.config import Settings, get_settings
 from perfsage.core.analysis.slo import SLOConfig
 from perfsage.core.storage.db import ReportStatus, get_engine, get_session
-from perfsage.core.storage.files import FileStore
 from perfsage.core.storage.repos import AppSettingsRepo, InsightRepo, ReportRepo
 
 logger = logging.getLogger(__name__)
@@ -22,28 +22,27 @@ router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
-def _build_engine(settings: Settings) -> object:
+def _engine(settings: Settings) -> Any:
     return get_engine(settings.database_url)
 
 
 @router.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, settings: Settings = Depends(get_settings)) -> HTMLResponse:
-    """Landing page / dashboard with upload form and recent reports."""
-    engine = get_engine(settings.database_url)
+async def dashboard(
+    request: Request, settings: Settings = Depends(get_settings)
+) -> HTMLResponse:
+    engine = _engine(settings)
     with get_session(engine) as session:
         repo = ReportRepo(session)
-        all_reports = repo.list_all(limit=10_000)
-        recent_reports = all_reports[:5]
+        all_reports = repo.list_all(limit=10000)
+        recent = repo.list_all(limit=5)
         total = len(all_reports)
         ready = sum(1 for r in all_reports if r.status == ReportStatus.READY)
-        processing = sum(
-            1 for r in all_reports if r.status in (ReportStatus.PROCESSING, ReportStatus.PENDING)
-        )
+        processing = sum(1 for r in all_reports if r.status == ReportStatus.PROCESSING)
     return templates.TemplateResponse(
         request,
         "index.html",
         {
-            "recent_reports": recent_reports,
+            "recent_reports": recent,
             "total_reports": total,
             "ready_reports": ready,
             "processing_reports": processing,
@@ -55,8 +54,7 @@ async def dashboard(request: Request, settings: Settings = Depends(get_settings)
 async def reports_list(
     request: Request, settings: Settings = Depends(get_settings)
 ) -> HTMLResponse:
-    """All reports listing page."""
-    engine = get_engine(settings.database_url)
+    engine = _engine(settings)
     with get_session(engine) as session:
         reports = ReportRepo(session).list_all(limit=200)
     return templates.TemplateResponse(request, "reports_list.html", {"reports": reports})
@@ -68,38 +66,43 @@ async def report_detail(
     request: Request,
     settings: Settings = Depends(get_settings),
 ) -> HTMLResponse:
-    """Detailed report view with all 20 Plotly visualisations."""
-    engine = get_engine(settings.database_url)
+    from perfsage.core.storage.files import FileStore
+
+    engine = _engine(settings)
     file_store = FileStore(settings.data_dir)
 
     with get_session(engine) as session:
         report = ReportRepo(session).get(report_id)
-        if not report:
+        if report is None:
             return HTMLResponse("Report not found", status_code=404)
         insights = InsightRepo(session).list_for_report(report_id)
+        app_settings = AppSettingsRepo(session)
         ai_key_configured = (
-            AppSettingsRepo(session).get("openai_key") is not None
-            or AppSettingsRepo(session).get("anthropic_key") is not None
-            or AppSettingsRepo(session).get("gemini_key") is not None
+            app_settings.get("openai_key") is not None
+            or app_settings.get("anthropic_key") is not None
+            or app_settings.get("gemini_key") is not None
         )
 
     samples_path = file_store.samples_parquet(report_id)
-    slo_config = SLOConfig()
-
-    figures_json: dict[str, object] = {}
-    recommendations: list[object] = []
+    figures_json: dict[str, Any] = {}
+    recommendations: list[Any] = []
     summary_stats: list[dict[str, str]] = []
+    slo_config = SLOConfig()
 
     if samples_path.exists() and report.status == ReportStatus.READY:
         figures_json = _build_figures(samples_path, slo_config)
-        recommendations = _build_recommendations(samples_path, slo_config)
-        summary_stats = _build_summary_stats(samples_path, report)
+        try:
+            from perfsage.core.analysis.recommendations import run_all_recommendations
+
+            recommendations = run_all_recommendations(samples_path, slo_config)
+        except Exception:
+            logger.warning("Recommendations failed for report %s", report_id, exc_info=True)
+        summary_stats = _build_summary_stats(report, samples_path)
 
     ai_insights: str | None = None
-    for insight in insights:
-        if insight.kind == "ai_narrative":
-            ai_insights = insight.message
-            break
+    ai_insight_obj = next((i for i in insights if i.kind == "ai_narrative"), None)
+    if ai_insight_obj is not None:
+        ai_insights = ai_insight_obj.message
 
     return templates.TemplateResponse(
         request,
@@ -119,8 +122,7 @@ async def report_detail(
 async def settings_page(
     request: Request, settings: Settings = Depends(get_settings)
 ) -> HTMLResponse:
-    """Settings page for API keys and SLO defaults."""
-    engine = get_engine(settings.database_url)
+    engine = _engine(settings)
     configured_providers: list[str] = []
     with get_session(engine) as session:
         repo = AppSettingsRepo(session)
@@ -141,23 +143,20 @@ async def settings_page(
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers — keep heavy imports lazy to avoid startup cost
+# Helpers
 # ---------------------------------------------------------------------------
 
 
-def _safe_fig(fn: object, *args: object, **kwargs: object) -> object:
-    """Call a Plotly figure builder; return parsed JSON dict or None on error."""
-    import json as _json
-
+def _safe_fig(fn: Any, *args: Any, **kwargs: Any) -> Any:
+    """Call a viz builder; return Plotly JSON dict or None on any error."""
     try:
-        fig = fn(*args, **kwargs)  # type: ignore[operator]
-        return _json.loads(fig.to_json())
-    except Exception as exc:
-        logger.debug("Figure builder %s failed: %s", fn, exc)
+        return json.loads(fn(*args, **kwargs).to_json())
+    except Exception:
+        logger.debug("Figure builder %s failed", getattr(fn, "__name__", fn), exc_info=True)
         return None
 
 
-def _build_figures(samples_path: Path, slo_config: SLOConfig) -> dict[str, object]:
+def _build_figures(samples_path: Path, slo_config: SLOConfig) -> dict[str, Any]:
     from perfsage.core.viz.decomposition import (
         fig_latency_components,
         fig_per_label_small_multiples,
@@ -174,7 +173,11 @@ def _build_figures(samples_path: Path, slo_config: SLOConfig) -> dict[str, objec
         fig_rt_vs_throughput,
         fig_rt_vs_time_by_status,
     )
-    from perfsage.core.viz.slo import fig_apdex_by_label, fig_error_sunburst, fig_slo_gauges
+    from perfsage.core.viz.slo import (
+        fig_apdex_by_label,
+        fig_error_sunburst,
+        fig_slo_gauges,
+    )
     from perfsage.core.viz.tables import fig_slowest_transactions, fig_variability_chart
     from perfsage.core.viz.timeseries import (
         fig_bytes_over_time,
@@ -208,27 +211,18 @@ def _build_figures(samples_path: Path, slo_config: SLOConfig) -> dict[str, objec
     }
 
 
-def _build_recommendations(samples_path: Path, slo_config: SLOConfig) -> list[object]:
-    from perfsage.core.analysis.recommendations import run_all_recommendations
-
+def _build_summary_stats(report: Any, samples_path: Path) -> list[dict[str, str]]:
     try:
-        return run_all_recommendations(samples_path, slo_config)  # type: ignore[return-value]
-    except Exception as exc:
-        logger.warning("Recommendations failed: %s", exc)
-        return []
+        from perfsage.core.analysis.metrics import compute_label_summary
+        from perfsage.core.analysis.percentiles import compute_overall_percentiles
 
-
-def _build_summary_stats(samples_path: Path, report: object) -> list[dict[str, str]]:
-    from perfsage.core.analysis.metrics import compute_label_summary
-    from perfsage.core.analysis.percentiles import compute_overall_percentiles
-    from perfsage.core.storage.db import Report
-
-    assert isinstance(report, Report)
-    try:
         pcts = compute_overall_percentiles(samples_path)
         lsummary = compute_label_summary(samples_path)
-        mean_val = lsummary["error_rate"].mean() if "error_rate" in lsummary.columns else None
-        error_rate = float(mean_val) * 100 if mean_val is not None else 0.0  # type: ignore[arg-type]
+        error_rate = 0.0
+        if "error_rate" in lsummary.columns:
+            raw_mean = lsummary["error_rate"].mean()
+            if raw_mean is not None:
+                error_rate = float(str(raw_mean)) * 100
         return [
             {"label": "P50 (ms)", "value": f"{pcts.get('p50', 0):.0f}"},
             {"label": "P90 (ms)", "value": f"{pcts.get('p90', 0):.0f}"},
@@ -236,6 +230,6 @@ def _build_summary_stats(samples_path: Path, report: object) -> list[dict[str, s
             {"label": "Error Rate", "value": f"{error_rate:.1f}%"},
             {"label": "Total Samples", "value": f"{report.parsed_row_count:,}"},
         ]
-    except Exception as exc:
-        logger.warning("Summary stats failed: %s", exc)
+    except Exception:
+        logger.warning("Summary stats failed", exc_info=True)
         return []

@@ -19,8 +19,7 @@
     </div>
     <div style="margin-bottom:1rem">
       <label style="font-weight:500">API Key</label><br>
-      <input type="password" name="api_key" placeholder="sk-..."
-             style="margin-top:0.25rem;width:100%;max-width:480px;padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;font-family:var(--font-mono)">
+      <input type="password" name="api_key" placeholder="sk-..." style="margin-top:0.25rem;width:100%;max-width:480px;padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;font-family:var(--font-mono)">
     </div>
     <button class="btn-primary" type="submit">Save Key</button>
   </form>
@@ -42,23 +41,19 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;max-width:480px">
       <div>
         <label style="font-size:0.875rem;font-weight:500">P90 threshold (ms)</label><br>
-        <input type="number" name="p90_ms" value="{{ slo.p90_ms }}"
-               style="padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;width:100%">
+        <input type="number" name="p90_ms" value="{{ slo.p90_ms }}" style="padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;width:100%">
       </div>
       <div>
         <label style="font-size:0.875rem;font-weight:500">P99 threshold (ms)</label><br>
-        <input type="number" name="p99_ms" value="{{ slo.p99_ms }}"
-               style="padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;width:100%">
+        <input type="number" name="p99_ms" value="{{ slo.p99_ms }}" style="padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;width:100%">
       </div>
       <div>
         <label style="font-size:0.875rem;font-weight:500">Max error rate (%)</label><br>
-        <input type="number" step="0.1" name="error_rate_pct" value="{{ slo.error_rate_pct }}"
-               style="padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;width:100%">
+        <input type="number" step="0.1" name="error_rate_pct" value="{{ slo.error_rate_pct }}" style="padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;width:100%">
       </div>
       <div>
         <label style="font-size:0.875rem;font-weight:500">Apdex T (seconds)</label><br>
-        <input type="number" step="0.1" name="apdex_t" value="{{ slo.apdex_t }}"
-               style="padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;width:100%">
+        <input type="number" step="0.1" name="apdex_t" value="{{ slo.apdex_t }}" style="padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;width:100%">
       </div>
     </div>
     <button class="btn-primary" style="margin-top:1rem" type="submit">Save SLO Defaults</button>

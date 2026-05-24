@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from perfsage.config import Settings, get_settings
@@ -19,11 +20,8 @@ router = APIRouter(prefix="/uploads", tags=["uploads"])
 _templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "web" / "templates"))
 
 
-def _is_htmx(request: Request) -> bool:
-    return request.headers.get("HX-Request") == "true"
-
-
-async def _render_progress(request: Request, job_id: str, report_id: str) -> HTMLResponse:
+def _progress_response(request: Request, job_id: str, report_id: str) -> HTMLResponse:
+    """Render the progress partial template."""
     return _templates.TemplateResponse(
         request,
         "progress.html",
@@ -31,17 +29,17 @@ async def _render_progress(request: Request, job_id: str, report_id: str) -> HTM
     )
 
 
-@router.post("/upload", status_code=202, response_model=None)
+@router.post("/upload", status_code=202)
 async def upload_file(
     request: Request,
     file: UploadFile = File(...),
     name: str | None = Form(None),
     settings: Settings = Depends(get_settings),
-) -> dict[str, str] | HTMLResponse:
+) -> Response:
     """Stream-upload a JMeter JTL file, create Report + Job, enqueue ingest task.
 
-    Returns ``{"report_id": ..., "job_id": ...}`` for plain requests,
-    or a progress partial HTML fragment for HTMX requests.
+    Returns ``{"report_id": ..., "job_id": ...}`` (JSON 202) for regular callers.
+    Returns progress HTML (200) when the ``HX-Request`` header is present (HTMX).
     Rejects files exceeding ``settings.max_upload_bytes`` with HTTP 413.
     """
     report_name = name or file.filename or "unnamed"
@@ -96,24 +94,25 @@ async def upload_file(
         upload_path=str(upload_path),
     )
 
-    if _is_htmx(request):
-        return await _render_progress(request, job.id, report.id)
-    return {"report_id": report.id, "job_id": job.id}
+    # HTMX browsers get progress HTML; plain API callers get JSON 202.
+    if request.headers.get("HX-Request"):
+        return _progress_response(request, job.id, report.id)
+    return JSONResponse(content={"report_id": report.id, "job_id": job.id}, status_code=202)
 
 
-@router.post("/paste", response_class=HTMLResponse)
+@router.post("/paste", response_class=HTMLResponse, status_code=200)
 async def paste_content(
     request: Request,
     content: str = Form(...),
     name: str | None = Form(None),
     settings: Settings = Depends(get_settings),
-) -> HTMLResponse:
-    """Accept pasted JTL/CSV text content, write to a temp file and enqueue analysis.
+) -> Any:
+    """Accept pasted JTL/CSV text, write to disk, create Report + Job, enqueue.
 
-    Always returns the progress partial HTML fragment (designed for HTMX forms).
+    Returns progress HTML partial.
     """
-    report_name = name or "Pasted content"
     engine = request.app.state.engine
+    report_name = name or "pasted-content"
 
     fs = FileStore(settings.data_dir)
     fs.ensure_dirs()
@@ -127,6 +126,7 @@ async def paste_content(
         job = JobRepo(session).create(report_id=report.id)
 
     upload_path = fs.upload_path(job.id)
+
     try:
         async with aiofiles.open(upload_path, "w", encoding="utf-8") as out:
             await out.write(content)
@@ -134,7 +134,7 @@ async def paste_content(
         upload_path.unlink(missing_ok=True)
         with get_session(engine) as session:
             ReportRepo(session).update_status(report.id, ReportStatus.FAILED)
-        raise HTTPException(status_code=500, detail=f"Failed to write pasted content: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"Paste failed: {exc}") from exc
 
     redis = request.app.state.redis
     await redis.enqueue_job(
@@ -144,4 +144,4 @@ async def paste_content(
         upload_path=str(upload_path),
     )
 
-    return await _render_progress(request, job.id, report.id)
+    return _progress_response(request, job.id, report.id)
