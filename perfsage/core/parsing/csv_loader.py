@@ -11,9 +11,11 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import polars as pl
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from perfsage.core.parsing.cleanup import QuarantinedRow, clean_dataframe
-from perfsage.core.parsing.schema import CANONICAL_FIELDS, COLUMN_ALIASES
+from perfsage.core.parsing.schema import CANONICAL_FIELDS, CANONICAL_SCHEMA, COLUMN_ALIASES
 
 CHUNK_ROWS = 50_000
 
@@ -126,19 +128,33 @@ def load_csv_to_parquet(
     """
     parsed_rows = 0
     all_quarantined: list[QuarantinedRow] = []
-    chunks: list[pl.DataFrame] = []
 
-    for clean, quarantined in stream_csv(src, delimiter=delimiter):
-        chunks.append(clean)
-        parsed_rows += len(clean)
-        all_quarantined.extend(quarantined)
+    dest_parquet.parent.mkdir(parents=True, exist_ok=True)
+    quarantine_parquet.parent.mkdir(parents=True, exist_ok=True)
 
-    if chunks:
-        combined = pl.concat(chunks, rechunk=True)
-    else:
-        combined = pl.DataFrame()
+    writer: pq.ParquetWriter | None = None
+    try:
+        for clean, quarantined in stream_csv(src, delimiter=delimiter):
+            parsed_rows += len(clean)
+            all_quarantined.extend(quarantined)
 
-    combined.write_parquet(dest_parquet)
+            arrow_table = clean.to_arrow()
+            present_names = set(arrow_table.schema.names)
+            chunk_fields = [f for f in CANONICAL_SCHEMA if f.name in present_names]
+            if chunk_fields:
+                partial_schema = pa.schema(chunk_fields)
+                arrow_table = arrow_table.select(
+                    [f.name for f in chunk_fields]
+                ).cast(partial_schema)
+            if writer is None:
+                writer = pq.ParquetWriter(dest_parquet, arrow_table.schema)  # type: ignore[no-untyped-call]
+            writer.write_table(arrow_table)  # type: ignore[no-untyped-call]
+    finally:
+        if writer:
+            writer.close()  # type: ignore[no-untyped-call]
+        elif not dest_parquet.exists():
+            pl.DataFrame().write_parquet(dest_parquet)
+
     _write_quarantine_parquet(all_quarantined, quarantine_parquet)
 
     return parsed_rows, len(all_quarantined)

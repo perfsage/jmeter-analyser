@@ -135,3 +135,16 @@ def test_loads_csv_with_errors(tmp_path: Path) -> None:
     assert parsed + errors == 10
     # All rows have valid elapsed — none quarantined; success=false is fine.
     assert parsed == 10
+
+
+def test_csv_memory_bounded_100k(tmp_path: Path) -> None:
+    """100k-row CSV must load completely without accumulating all chunks."""
+    src = _write(tmp_path, make_csv_jtl(n_rows=100_000, version="5.6"))
+    dest = tmp_path / "out.parquet"
+    quar = tmp_path / "quar.parquet"
+    parsed, errors = load_csv_to_parquet(src, dest, quar)
+    assert parsed == 100_000
+    assert errors == 0
+    df = pl.read_parquet(dest)
+    assert len(df) == 100_000
+    assert set(df.columns).issuperset({"timestamp_ms", "elapsed", "label", "success"})

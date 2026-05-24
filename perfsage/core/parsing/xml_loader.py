@@ -12,9 +12,12 @@ from pathlib import Path
 from typing import Any
 
 import polars as pl
+import pyarrow as pa
+import pyarrow.parquet as pq
 from lxml import etree
 
 from perfsage.core.parsing.cleanup import QuarantinedRow, clean_dataframe
+from perfsage.core.parsing.schema import CANONICAL_SCHEMA
 
 CHUNK_ROWS = 50_000
 
@@ -32,6 +35,7 @@ _XML_ATTR_MAP: dict[str, str] = {
     "ng": "grp_threads",
     "na": "all_threads",
     "lt": "latency",
+    "it": "idle_time",  # idle time (ms), JMeter 3.x+
     "ct": "connect",
 }
 
@@ -51,7 +55,6 @@ def _parse_element(elem: Any) -> dict[str, Any]:
     url_el = elem.find("java.net.URL")
     if url_el is not None and url_el.text:
         row["url"] = url_el.text
-    # idle_time is not a standard XML attribute; leave absent if missing.
     return row
 
 
@@ -143,19 +146,33 @@ def load_xml_to_parquet(
     """
     parsed_rows = 0
     all_quarantined: list[QuarantinedRow] = []
-    chunks: list[pl.DataFrame] = []
 
-    for clean, quarantined in stream_xml(src):
-        chunks.append(clean)
-        parsed_rows += len(clean)
-        all_quarantined.extend(quarantined)
+    dest_parquet.parent.mkdir(parents=True, exist_ok=True)
+    quarantine_parquet.parent.mkdir(parents=True, exist_ok=True)
 
-    if chunks:
-        combined = pl.concat(chunks, rechunk=True)
-    else:
-        combined = pl.DataFrame()
+    writer: pq.ParquetWriter | None = None
+    try:
+        for clean, quarantined in stream_xml(src):
+            parsed_rows += len(clean)
+            all_quarantined.extend(quarantined)
 
-    combined.write_parquet(dest_parquet)
+            arrow_table = clean.to_arrow()
+            present_names = set(arrow_table.schema.names)
+            chunk_fields = [f for f in CANONICAL_SCHEMA if f.name in present_names]
+            if chunk_fields:
+                partial_schema = pa.schema(chunk_fields)
+                arrow_table = arrow_table.select(
+                    [f.name for f in chunk_fields]
+                ).cast(partial_schema)
+            if writer is None:
+                writer = pq.ParquetWriter(dest_parquet, arrow_table.schema)  # type: ignore[no-untyped-call]
+            writer.write_table(arrow_table)  # type: ignore[no-untyped-call]
+    finally:
+        if writer:
+            writer.close()  # type: ignore[no-untyped-call]
+        elif not dest_parquet.exists():
+            pl.DataFrame().write_parquet(dest_parquet)
+
     _write_quarantine_parquet(all_quarantined, quarantine_parquet)
 
     return parsed_rows, len(all_quarantined)
