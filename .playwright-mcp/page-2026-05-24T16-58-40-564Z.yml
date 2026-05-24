@@ -1,0 +1,174 @@
+- generic [active] [ref=e1]:
+  - navigation "Primary" [ref=e2]:
+    - link "PerfSage Home" [ref=e3] [cursor=pointer]:
+      - /url: /
+      - img "PerfSage" [ref=e4]
+    - navigation "Main" [ref=e5]:
+      - link "Home" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - link "About" [ref=e7] [cursor=pointer]:
+        - /url: /about/
+      - button "Services" [ref=e9] [cursor=pointer]:
+        - text: Services
+        - generic [ref=e10]: ▼
+      - link "Tools" [ref=e11] [cursor=pointer]:
+        - /url: /tools/
+      - link "Blog" [ref=e12] [cursor=pointer]:
+        - /url: /blog/
+      - link "Contact" [ref=e13] [cursor=pointer]:
+        - /url: /contact/
+      - link "PerfSage GitHub (opens in new tab)" [ref=e14] [cursor=pointer]:
+        - /url: https://github.com/perfsage
+        - text: GitHub
+    - button "Toggle light/dark theme" [ref=e15] [cursor=pointer]:
+      - img [ref=e17]
+  - banner [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]: Performance Engineering, Reinvented
+      - heading "Make Systems Blazing Fast" [level=1] [ref=e24]
+      - paragraph [ref=e25]: AI tools for test insights, open-source JMeter plugins, and SRE-grade reliability thinking—so performance, availability, and observability work together in the real world.
+      - generic [ref=e26]:
+        - link "Explore Tools ➞" [ref=e27] [cursor=pointer]:
+          - /url: "#tools"
+        - link "Meet Aashish" [ref=e28] [cursor=pointer]:
+          - /url: /about/
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - generic [ref=e31]: "0"
+          - generic [ref=e32]: Years XP
+        - generic [ref=e33]:
+          - generic [ref=e34]: "0"
+          - generic [ref=e35]: RPS Handled
+        - generic [ref=e36]:
+          - generic [ref=e37]: "0"
+          - generic [ref=e38]: Clients
+        - generic [ref=e39]:
+          - generic [ref=e40]: "0"
+          - generic [ref=e41]: Incidents Learned
+    - generic "Skills ticker" [ref=e42]:
+      - generic [ref=e43]:
+        - generic [ref=e44]: Performance Engineering ·
+        - generic [ref=e45]: SRE ·
+        - generic [ref=e46]: JMeter ·
+        - generic [ref=e47]: eBPF ·
+        - generic [ref=e48]: Kubernetes ·
+        - generic [ref=e49]: Chaos Engineering ·
+        - generic [ref=e50]: AI Analysis ·
+        - generic [ref=e51]: Capacity Planning ·
+        - generic [ref=e52]: SLO/SLI ·
+        - generic [ref=e53]: Performance Engineering ·
+        - generic [ref=e54]: SRE ·
+        - generic [ref=e55]: JMeter ·
+        - generic [ref=e56]: eBPF ·
+        - generic [ref=e57]: Kubernetes ·
+        - generic [ref=e58]: Chaos Engineering ·
+        - generic [ref=e59]: AI Analysis ·
+        - generic [ref=e60]: Capacity Planning ·
+        - generic [ref=e61]: SLO/SLI ·
+  - main [ref=e62]:
+    - generic [ref=e64]:
+      - heading "What PerfSage Helps You Build" [level=2] [ref=e65]
+      - paragraph [ref=e66]: Premium performance engineering, delivered like a modern dev-tool — fast, observable, and resilient.
+      - generic [ref=e67]:
+        - article [ref=e68]:
+          - generic [ref=e69]:
+            - generic [ref=e70]: 🔌
+            - heading "Open Source JMeter Plugins" [level=3] [ref=e71]
+          - paragraph [ref=e72]: Production-tested extensions to supercharge load testing workflows.
+        - article [ref=e73]:
+          - generic [ref=e74]:
+            - generic [ref=e75]: 🤖
+            - heading "AI-Powered Test Insights" [level=3] [ref=e76]
+          - paragraph [ref=e77]: Automatic interpretation of results with actionable anomaly signals.
+        - article [ref=e78]:
+          - generic [ref=e79]:
+            - generic [ref=e80]: 📈
+            - heading "SRE & Observability" [level=3] [ref=e81]
+          - paragraph [ref=e82]: SLO thinking, telemetry clarity, and reliability engineering you can trust.
+        - article [ref=e83]:
+          - generic [ref=e84]:
+            - generic [ref=e85]: 🨈
+            - heading "Chaos Engineering" [level=3] [ref=e86]
+          - paragraph [ref=e87]: Fault injection strategies that build real confidence in failure modes.
+        - article [ref=e88]:
+          - generic [ref=e89]:
+            - generic [ref=e90]: 📝
+            - heading "Engineering Blog" [level=3] [ref=e91]
+          - paragraph [ref=e92]:
+            - text: Deep guides on performance analysis, percentiles, and reliability patterns at
+            - link "thinkbits.org" [ref=e93] [cursor=pointer]:
+              - /url: https://thinkbits.org
+            - text: .
+        - article [ref=e94]:
+          - generic [ref=e95]:
+            - generic [ref=e96]: 🎍
+            - heading "Mentorship & Coaching" [level=3] [ref=e97]
+          - paragraph [ref=e98]:
+            - text: 1:1 support for performance engineering teams via
+            - link "Topmate" [ref=e99] [cursor=pointer]:
+              - /url: https://topmate.io/abajpai/659595
+            - text: .
+    - generic [ref=e101]:
+      - heading "Taste the API" [level=2] [ref=e102]
+      - paragraph [ref=e103]: Script SLO-aware analysis with PerfSage-style Python — from raw JTL to actionable report in seconds.
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - heading "From raw data to decisions" [level=3] [ref=e106]
+          - paragraph [ref=e107]: Start with test results, detect anomalies, and export a structured report you can plug into your performance engineering pipeline.
+          - link "View on GitHub ➞" [ref=e109] [cursor=pointer]:
+            - /url: https://github.com/perfsage
+        - generic "Python code demo" [ref=e110]:
+          - code [ref=e112]:
+            - text: "from perfsage import SLOReporter reporter = SLOReporter( slo_config=\"slo.properties\", anomaly_mode=\"fast-local\" ) report = reporter.analyze(\"results.jtl\") reporter.export_html(\"report/\") print(f\"SLO compliance:"
+            - text: report.slo_pct
+            - text: "%\")"
+    - generic [ref=e114]:
+      - generic [ref=e115]:
+        - generic [ref=e116]:
+          - heading "From the Blog" [level=2] [ref=e117]
+          - paragraph [ref=e118]: Field notes on performance, reliability, and SRE from the trenches.
+        - link "All Posts ➞" [ref=e119] [cursor=pointer]:
+          - /url: /blog/
+      - link "JMeter SLO I Couldn't Gate JMeter on SLOs — So I Fixed It for Good How one CI pipeline assignment exposed a gap in JMeter's ecosystem, and how PerfSage SLO Reporter fills it — with a real 5-API validation run to prove it. Aashish Bajpai Apr 5, 2026" [ref=e121] [cursor=pointer]:
+        - /url: /blog/public-api-bakeoff-with-perfsage-slo-reporter/
+        - generic [ref=e122]:
+          - generic [ref=e123]:
+            - generic [ref=e124]: JMeter
+            - generic [ref=e125]: SLO
+          - heading "I Couldn't Gate JMeter on SLOs — So I Fixed It for Good" [level=3] [ref=e126]
+          - paragraph [ref=e127]: How one CI pipeline assignment exposed a gap in JMeter's ecosystem, and how PerfSage SLO Reporter fills it — with a real 5-API validation run to prove it.
+        - generic [ref=e128]:
+          - generic [ref=e129]: Aashish Bajpai
+          - time [ref=e130]: Apr 5, 2026
+    - generic [ref=e133]:
+      - heading "Ready to Make Your Systems Unbreakable?" [level=2] [ref=e134]
+      - paragraph [ref=e135]: Explore open-source tools, request a mentorship session, or start an SLO/observability-focused reliability engagement.
+      - generic [ref=e136]:
+        - link "Contact ➞" [ref=e137] [cursor=pointer]:
+          - /url: /contact/
+        - link "Meet Aashish" [ref=e138] [cursor=pointer]:
+          - /url: /about/
+  - contentinfo [ref=e139]:
+    - generic [ref=e140]:
+      - link "GitHub (opens in new tab)" [ref=e141] [cursor=pointer]:
+        - /url: https://github.com/perfsage
+        - img [ref=e142]
+        - generic [ref=e143]: GitHub
+      - link "LinkedIn (opens in new tab)" [ref=e144] [cursor=pointer]:
+        - /url: https://linkedin.com/in/aashu320
+        - generic [ref=e145]: in
+        - generic [ref=e146]: LinkedIn
+      - link "X / Twitter (opens in new tab)" [ref=e147] [cursor=pointer]:
+        - /url: https://x.com/aashu320
+        - generic [ref=e148]: X
+        - generic [ref=e149]: X
+      - link "Instagram (opens in new tab)" [ref=e150] [cursor=pointer]:
+        - /url: https://instagram.com/aashu320
+        - generic [ref=e151]: ◎
+        - generic [ref=e152]: Instagram
+      - link "Facebook (opens in new tab)" [ref=e153] [cursor=pointer]:
+        - /url: https://facebook.com/aashish.bajpai.52
+        - generic [ref=e154]: f
+        - generic [ref=e155]: Facebook
+    - paragraph [ref=e156]: © 2026 PerfSage. Building the future of AI-powered performance engineering.
+    - paragraph [ref=e157]: JMeter is a trademark of the Apache Software Foundation.

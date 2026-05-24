@@ -1,0 +1,14 @@
+---
+description: Project conventions and decisions learned from agent sessions
+alwaysApply: true
+---
+
+# Core conventions
+
+## MCP (Cursor global config: `~/.cursor/mcp.json`)
+
+- Cursor GUI on macOS does not inherit Homebrew `PATH`; MCP commands must use absolute paths (e.g. `/opt/homebrew/bin/npx`) and set `PATH` in each server's `env`.
+- `spawn npx ENOENT` in MCP logs means fix paths, not API keys.
+- **chrome-devtools**: use `--autoConnect`; enable remote debugging once in Chrome at `chrome://inspect/#remote-debugging` (Chrome 144+). Requires Chrome running with a normal profile.
+- **Magic MCP**: pass `API_KEY` via `env`, not as a CLI arg string in `args`.
+- **playwright** (`@playwright/mcp`): enabled in global `mcp.json` with `--browser=chrome` (system Chrome; no separate Chromium download).

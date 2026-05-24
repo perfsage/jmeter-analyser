@@ -1,0 +1,3 @@
+# data/ runtime directory
+# Parquet files, SQLite databases, uploads and exports are created here at runtime.
+# Only this .gitkeep is tracked.

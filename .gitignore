@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment
+.env
+!.env.example
+
+# Data (runtime)
+data/*.db
+data/*.parquet
+data/uploads/
+data/exports/
+data/cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Tests
+.coverage
+.pytest_cache/
+htmlcov/
+.hypothesis/
+
+# mypy
+.mypy_cache/
+
+# ruff
+.ruff_cache/
+
+# Docker
+*.log
+
+# Playwright
+playwright-report/
+test-results/
