@@ -17,7 +17,21 @@ from perfsage.core.storage.repos import JobRepo, ReportRepo
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
+_MIN_PASTE_CHARS = 50
+
 _templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "web" / "templates"))
+
+
+async def _sniff_content(file: UploadFile) -> bool:
+    """Read first 512 bytes and confirm the file looks like JTL/CSV/XML."""
+    first_bytes = await file.read(512)
+    await file.seek(0)
+    # Null bytes are a reliable binary indicator — reject immediately.
+    if b"\x00" in first_bytes:
+        return False
+    text = first_bytes.decode("utf-8", errors="ignore")
+    stripped = text.lstrip()
+    return stripped.startswith("<") or "," in text or "\t" in text or ";" in text
 
 
 def _progress_response(request: Request, job_id: str, report_id: str) -> HTMLResponse:
@@ -43,6 +57,21 @@ async def upload_file(
     Rejects files exceeding ``settings.max_upload_bytes`` with HTTP 413.
     """
     report_name = name or file.filename or "unnamed"
+
+    # Reject oversized files early using Content-Length header when present.
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > settings.max_upload_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds maximum allowed size of {settings.max_upload_bytes} bytes",
+        )
+
+    if not await _sniff_content(file):
+        raise HTTPException(
+            status_code=415,
+            detail="File does not appear to be a valid JTL/CSV/XML document",
+        )
+
     engine = request.app.state.engine
 
     fs = FileStore(settings.data_dir)
@@ -111,6 +140,12 @@ async def paste_content(
 
     Returns progress HTML partial.
     """
+    if len(content) < _MIN_PASTE_CHARS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Pasted content is too short (minimum {_MIN_PASTE_CHARS} characters)",
+        )
+
     engine = request.app.state.engine
     report_name = name or "pasted-content"
 

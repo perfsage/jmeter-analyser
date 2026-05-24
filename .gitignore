@@ -19,11 +19,10 @@ env/
 !.env.example
 
 # Data (runtime)
-data/*.db
-data/*.parquet
-data/uploads/
-data/exports/
-data/cache/
+data/*
+!data/.gitkeep
+*.parquet
+*.jtl
 
 # IDE
 .idea/
