@@ -46,7 +46,6 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     for job in interrupted:
         # Reset to QUEUED in DB.
         with get_session(engine) as session:
-            j = session.get(JobStatus.__class__, job.id)  # type: ignore[arg-type]
             from perfsage.core.storage.db import Job
 
             j = session.get(Job, job.id)

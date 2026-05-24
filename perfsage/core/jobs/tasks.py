@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
@@ -12,7 +13,7 @@ from perfsage.config import get_settings
 from perfsage.core.parsing.csv_loader import load_csv_to_parquet
 from perfsage.core.parsing.detect import JTLFormat, detect_csv_delimiter, detect_format
 from perfsage.core.parsing.xml_loader import load_xml_to_parquet
-from perfsage.core.storage.db import ReportStatus, get_engine, get_session
+from perfsage.core.storage.db import Job, JobStatus, Report, ReportStatus, get_engine, get_session
 from perfsage.core.storage.files import FileStore
 from perfsage.core.storage.repos import JobRepo, ReportRepo
 
@@ -82,13 +83,19 @@ async def ingest_report_task(
 
         duration = time.monotonic() - start
         with get_session(engine) as session:
-            ReportRepo(session).update_stats(
-                report_id,
-                status=ReportStatus.READY,
-                duration_seconds=duration,
-            )
-            JobRepo(session).mark_done(job_id)
+            report = session.get(Report, report_id)
+            if report:
+                report.status = ReportStatus.READY
+                report.duration_seconds = duration
+            job = session.get(Job, job_id)
+            if job:
+                job.status = JobStatus.DONE
+                job.ended_at = datetime.now(UTC)
+                job.progress_pct = 100.0
+                job.phase = "done"
+            session.commit()
 
+        src.unlink(missing_ok=True)
         await emit(100, "done", "Analysis complete")
 
     except Exception as exc:

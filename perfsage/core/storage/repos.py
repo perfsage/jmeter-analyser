@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlmodel import Session, select
@@ -77,7 +77,7 @@ class JobRepo:
         job.message = message
         if job.status == JobStatus.QUEUED:
             job.status = JobStatus.RUNNING
-            job.started_at = datetime.utcnow()
+            job.started_at = datetime.now(UTC)
         self._s.add(job)
         self._s.commit()
 
@@ -88,7 +88,7 @@ class JobRepo:
         job.status = JobStatus.DONE
         job.progress_pct = 100.0
         job.phase = "done"
-        job.ended_at = datetime.utcnow()
+        job.ended_at = datetime.now(UTC)
         self._s.add(job)
         self._s.commit()
 
@@ -98,7 +98,7 @@ class JobRepo:
             raise ValueError(f"Job not found: {job_id!r}")
         job.status = JobStatus.FAILED
         job.error_text = error
-        job.ended_at = datetime.utcnow()
+        job.ended_at = datetime.now(UTC)
         self._s.add(job)
         self._s.commit()
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from sqlalchemy.engine import Engine
@@ -38,7 +38,7 @@ class Report(SQLModel, table=True):
     name: str
     source_filename: str
     status: ReportStatus = ReportStatus.PENDING
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     size_bytes: int = 0
     row_count: int = 0
     parsed_row_count: int = 0
