@@ -1,26 +1,37 @@
 """File-system helpers for managing uploaded and generated files."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
-from perfsage.config import get_settings
 
+class FileStore:
+    """Centralised file path management for all data files on disk."""
 
-def uploads_dir() -> Path:
-    """Return the uploads directory, creating it if necessary."""
-    path = get_settings().data_dir / "uploads"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    def __init__(self, data_dir: Path) -> None:
+        self.data_dir = data_dir
 
+    def upload_path(self, job_id: str) -> Path:
+        """Return path for an uploaded JTL file: data/uploads/{job_id}.jtl"""
+        return self.data_dir / "uploads" / f"{job_id}.jtl"
 
-def exports_dir() -> Path:
-    """Return the exports directory, creating it if necessary."""
-    path = get_settings().data_dir / "exports"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    def samples_parquet(self, report_id: str) -> Path:
+        """Return path for the canonical samples parquet: data/parquet/{report_id}/samples.parquet"""
+        return self.data_dir / "parquet" / report_id / "samples.parquet"
 
+    def quarantine_parquet(self, report_id: str) -> Path:
+        """Return path for quarantined rows: data/parquet/{report_id}/quarantine.parquet"""
+        return self.data_dir / "parquet" / report_id / "quarantine.parquet"
 
-def parquet_dir() -> Path:
-    """Return the Parquet storage directory, creating it if necessary."""
-    path = get_settings().data_dir / "parquet"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    def agg_parquet(self, report_id: str, agg_name: str) -> Path:
+        """Return path for an aggregate file: data/parquet/{report_id}/agg_{agg_name}.parquet"""
+        return self.data_dir / "parquet" / report_id / f"agg_{agg_name}.parquet"
+
+    def export_path(self, report_id: str, fmt: str) -> Path:
+        """Return path for an export file: data/exports/{report_id}.{fmt}"""
+        return self.data_dir / "exports" / f"{report_id}.{fmt}"
+
+    def ensure_dirs(self) -> None:
+        """Create all required top-level subdirectories under data_dir."""
+        for sub in ("uploads", "parquet", "exports"):
+            (self.data_dir / sub).mkdir(parents=True, exist_ok=True)
