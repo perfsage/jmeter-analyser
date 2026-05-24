@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}{{ report.name }} — PerfSage{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+  <div>
+    <h1 style="color:var(--navy)">{{ report.name }}</h1>
+    <p style="color:#718096;font-size:0.875rem">
+      {{ report.source_filename }} &middot; {{ "{:,}".format(report.parsed_row_count) }} samples &middot;
+      {{ report.duration_seconds | round(1) }}s test duration &middot;
+      <span class="badge-{{ report.status.value }}">{{ report.status.value }}</span>
+    </p>
+  </div>
+  <div style="display:flex;gap:0.75rem">
+    <a href="/api/exports/{{ report.id }}/html" class="btn-outline" download>Export HTML</a>
+    <a href="/api/exports/{{ report.id }}/pdf" class="btn-primary" download>Export PDF</a>
+  </div>
+</div>
+
+<!-- Summary stats -->
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:2rem">
+  {% for stat in summary_stats %}
+  <div class="card" style="padding:1rem">
+    <p style="font-size:0.75rem;color:#718096">{{ stat.label }}</p>
+    <p style="font-size:1.5rem;font-weight:700;color:var(--navy)">{{ stat.value }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Recommendations / Insights -->
+{% if recommendations %}
+<div class="card" style="margin-bottom:2rem">
+  <h2 style="margin-bottom:1rem">&#9889; Insights &amp; Recommendations</h2>
+  {% for rec in recommendations %}
+  <div style="padding:0.75rem;border-radius:6px;margin-bottom:0.5rem;
+              background:{% if rec.severity.value == 'critical' %}#FFF5F5{% elif rec.severity.value == 'warning' %}#FFFBEB{% else %}#F0FFF4{% endif %};
+              border-left:4px solid {% if rec.severity.value == 'critical' %}var(--error-red){% elif rec.severity.value == 'warning' %}var(--warn-yellow){% else %}var(--success-green){% endif %}">
+    <strong>{{ rec.severity.value | upper }}:</strong> {{ rec.message }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- AI Insights (if enabled) -->
+{% if ai_insights %}
+<div class="card" style="margin-bottom:2rem;border:1.5px solid var(--amber)">
+  <h2 style="margin-bottom:1rem">&#129302; AI Analysis</h2>
+  <div style="white-space:pre-wrap;font-size:0.9375rem;line-height:1.6">{{ ai_insights }}</div>
+</div>
+{% else %}
+<div class="card" style="margin-bottom:2rem">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <h3 style="margin-bottom:0.25rem">AI-Powered Analysis</h3>
+      <p style="font-size:0.875rem;color:#718096">
+        {% if ai_key_configured %}Click to generate in-depth AI analysis of this report.{% else %}Configure an AI key in <a href="/settings">Settings</a> to enable AI analysis.{% endif %}
+      </p>
+    </div>
+    {% if ai_key_configured %}
+    <button class="btn-amber"
+            hx-post="/api/ai/{{ report.id }}/generate"
+            hx-target="#ai-result"
+            hx-swap="innerHTML"
+            hx-indicator="#ai-spinner">
+      Generate AI Insights
+    </button>
+    {% endif %}
+  </div>
+  <span id="ai-spinner" class="htmx-indicator" style="display:none">&#9203; Generating...</span>
+  <div id="ai-result"></div>
+</div>
+{% endif %}
+
+<!-- Visualizations grid -->
+<div class="viz-grid">
+  <!-- Fig 1: RT over time (full width) -->
+  <div class="card full-width">
+    <div id="fig-rt-time"></div>
+  </div>
+  <!-- Fig 2: Throughput over time -->
+  <div class="card">
+    <div id="fig-throughput"></div>
+  </div>
+  <!-- Fig 3: Errors over time -->
+  <div class="card">
+    <div id="fig-errors"></div>
+  </div>
+  <!-- Fig 4: Threads vs RT -->
+  <div class="card">
+    <div id="fig-threads"></div>
+  </div>
+  <!-- Fig 5: Bytes over time -->
+  <div class="card">
+    <div id="fig-bytes"></div>
+  </div>
+  <!-- Fig 6: Latency histogram -->
+  <div class="card">
+    <div id="fig-histogram"></div>
+  </div>
+  <!-- Fig 7: CDF -->
+  <div class="card">
+    <div id="fig-cdf"></div>
+  </div>
+  <!-- Fig 8: Boxplots -->
+  <div class="card full-width">
+    <div id="fig-boxplots"></div>
+  </div>
+  <!-- Fig 9: Heatmap (full width) -->
+  <div class="card full-width">
+    <div id="fig-heatmap"></div>
+  </div>
+  <!-- Fig 10: RT vs Throughput -->
+  <div class="card">
+    <div id="fig-rt-throughput"></div>
+  </div>
+  <!-- Fig 11: RT vs Concurrency -->
+  <div class="card">
+    <div id="fig-rt-concurrency"></div>
+  </div>
+  <!-- Fig 12: RT vs Time by status -->
+  <div class="card full-width">
+    <div id="fig-rt-status"></div>
+  </div>
+  <!-- Fig 13: Correlation matrix -->
+  <div class="card">
+    <div id="fig-correlation"></div>
+  </div>
+  <!-- Fig 14: Latency components -->
+  <div class="card">
+    <div id="fig-components"></div>
+  </div>
+  <!-- Fig 15: Small multiples (full width) -->
+  <div class="card full-width">
+    <div id="fig-multiples"></div>
+  </div>
+  <!-- Fig 16: SLO gauges -->
+  <div class="card">
+    <div id="fig-slo-gauges"></div>
+  </div>
+  <!-- Fig 17: APDEX by label -->
+  <div class="card">
+    <div id="fig-apdex"></div>
+  </div>
+  <!-- Fig 18: Slowest transactions -->
+  <div class="card full-width">
+    <div id="fig-slowest"></div>
+  </div>
+  <!-- Fig 19: Error sunburst -->
+  <div class="card">
+    <div id="fig-sunburst"></div>
+  </div>
+  <!-- Fig 20: Variability chart -->
+  <div class="card">
+    <div id="fig-variability"></div>
+  </div>
+</div>
+
+<script>
+var figs = {{ figures_json | safe }};
+for (var divId in figs) {
+  var figJson = figs[divId];
+  var el = document.getElementById(divId);
+  if (figJson && el) {
+    Plotly.newPlot(el, figJson.data, figJson.layout, {responsive: true, displayModeBar: true});
+  }
+}
+</script>
+{% endblock %}

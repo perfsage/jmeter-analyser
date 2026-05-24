@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — PerfSage{% endblock %}
+{% block content %}
+<h1 style="color:var(--navy);margin-bottom:1.5rem">Welcome to PerfSage Analyser</h1>
+
+<!-- Stats row -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-bottom:2rem">
+  <div class="card">
+    <p style="font-size:0.875rem;color:#718096">Total Reports</p>
+    <p style="font-size:2rem;font-weight:700;color:var(--navy)">{{ total_reports }}</p>
+  </div>
+  <div class="card">
+    <p style="font-size:0.875rem;color:#718096">Ready</p>
+    <p style="font-size:2rem;font-weight:700;color:var(--success-green)">{{ ready_reports }}</p>
+  </div>
+  <div class="card">
+    <p style="font-size:0.875rem;color:#718096">Processing</p>
+    <p style="font-size:2rem;font-weight:700;color:var(--amber)">{{ processing_reports }}</p>
+  </div>
+</div>
+
+<!-- Upload card -->
+<div class="card">
+  <h2 style="margin-bottom:1rem">Analyse a New Report</h2>
+  <!-- Tab switcher: Upload / Paste -->
+  <div style="display:flex;gap:1rem;margin-bottom:1.5rem">
+    <button class="btn-primary" onclick="showTab('upload')">Upload File</button>
+    <button class="btn-outline" onclick="showTab('paste')">Paste Content</button>
+  </div>
+
+  <!-- Upload tab -->
+  <div id="tab-upload">
+    <form id="upload-form"
+          hx-post="/api/uploads/upload"
+          hx-encoding="multipart/form-data"
+          hx-target="#upload-result"
+          hx-swap="innerHTML">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <p style="font-size:1.25rem;margin-bottom:0.5rem">&#128193; Drop your JTL/CSV file here</p>
+        <p style="color:#718096;font-size:0.875rem">or click to browse. Supports .jtl, .csv, .xml up to 2GB</p>
+        <input type="file" id="file-input" name="file" accept=".jtl,.csv,.xml" style="display:none"
+               onchange="document.getElementById('upload-form').dispatchEvent(new Event('submit'))">
+      </div>
+      <div style="margin-top:1rem">
+        <label style="font-size:0.875rem;font-weight:500">Report name (optional)</label><br>
+        <input type="text" name="name" placeholder="e.g. Black Friday load test"
+               style="margin-top:0.25rem;width:100%;padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px">
+      </div>
+      <div style="margin-top:1rem">
+        <button class="btn-primary" type="submit">Analyse</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Paste tab (hidden by default) -->
+  <div id="tab-paste" style="display:none">
+    <form hx-post="/api/uploads/paste"
+          hx-target="#upload-result"
+          hx-swap="innerHTML">
+      <textarea name="content" rows="12" placeholder="Paste JTL/CSV content here..."
+                style="width:100%;font-family:var(--font-mono);padding:0.75rem;border:1.5px solid #CBD5E0;border-radius:6px;font-size:0.8125rem"></textarea>
+      <div style="margin-top:1rem;display:flex;gap:1rem;align-items:center">
+        <input type="text" name="name" placeholder="Report name (optional)"
+               style="flex:1;padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px">
+        <button class="btn-primary" type="submit">Analyse</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="upload-result"></div>
+</div>
+
+<!-- Recent reports -->
+{% if recent_reports %}
+<div class="card">
+  <h2 style="margin-bottom:1rem">Recent Reports</h2>
+  <table class="data-table">
+    <thead><tr>
+      <th>Name</th><th>File</th><th>Status</th><th>Rows</th><th>Created</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for r in recent_reports %}
+    <tr>
+      <td>{{ r.name }}</td>
+      <td style="font-family:var(--font-mono);font-size:0.75rem">{{ r.source_filename }}</td>
+      <td><span class="badge-{{ r.status.value }}">{{ r.status.value }}</span></td>
+      <td>{{ "{:,}".format(r.parsed_row_count) }}</td>
+      <td>{{ r.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td><a href="/reports/{{ r.id }}" class="btn-outline" style="font-size:0.75rem;padding:0.25rem 0.75rem">View</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<script>
+function showTab(tab) {
+  document.getElementById('tab-upload').style.display = tab === 'upload' ? 'block' : 'none';
+  document.getElementById('tab-paste').style.display = tab === 'paste' ? 'block' : 'none';
+}
+// Drag and drop
+const dz = document.getElementById('drop-zone');
+if (dz) {
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f) {
+      const fi = document.getElementById('file-input');
+      const dt = new DataTransfer(); dt.items.add(f); fi.files = dt.files;
+      document.getElementById('upload-form').dispatchEvent(new Event('submit'));
+    }
+  });
+}
+</script>
+{% endblock %}

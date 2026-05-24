@@ -1,0 +1,35 @@
+<div id="progress-card" style="margin-top:1.5rem">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:0.75rem">
+      <span id="progress-phase" style="font-weight:600">Queued...</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <p id="progress-msg" style="font-size:0.875rem;color:#718096;margin-top:0.75rem"></p>
+  </div>
+</div>
+<script>
+(function() {
+  var jobId = "{{ job_id }}";
+  var reportId = "{{ report_id }}";
+  var es = new EventSource("/api/jobs/" + jobId + "/events");
+  es.onmessage = function(e) {
+    var data = JSON.parse(e.data);
+    document.getElementById('progress-fill').style.width = data.pct + '%';
+    document.getElementById('progress-pct').textContent = data.pct + '%';
+    document.getElementById('progress-phase').textContent = data.phase;
+    document.getElementById('progress-msg').textContent = data.message || '';
+    if (data.phase === 'done') {
+      es.close();
+      setTimeout(function() { window.location.href = '/reports/' + reportId; }, 800);
+    }
+    if (data.phase === 'error') {
+      es.close();
+      document.getElementById('progress-card').innerHTML = '<div class="card" style="border-left:4px solid var(--error-red)"><strong>Analysis failed:</strong> ' + (data.message || 'Unknown error') + '</div>';
+    }
+  };
+  es.onerror = function() { es.close(); };
+})();
+</script>

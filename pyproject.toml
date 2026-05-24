@@ -64,6 +64,7 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 "perfsage/web/templates/**" = ["E501"]
 "perfsage/api/**" = ["B008"]
+"perfsage/web/**" = ["B008"]
 
 [tool.mypy]
 strict = true
