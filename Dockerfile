@@ -11,8 +11,7 @@ COPY pyproject.toml README.md ./
 COPY perfsage/ perfsage/
 
 RUN pip install --upgrade pip && \
-    pip install --prefix=/install . && \
-    pip install --prefix=/install uvicorn[standard]
+    pip install --prefix=/install .
 
 # ─── runtime ──────────────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime

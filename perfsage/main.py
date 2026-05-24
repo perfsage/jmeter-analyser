@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -32,7 +33,7 @@ def create_app() -> FastAPI:
     # Static assets
     application.mount(
         "/static",
-        StaticFiles(directory="perfsage/web/static"),
+        StaticFiles(directory=Path(__file__).parent / "web" / "static"),
         name="static",
     )
 
@@ -50,7 +51,7 @@ def create_app() -> FastAPI:
     # Server-rendered HTMX views
     application.include_router(web_router)
 
-    @application.get("/healthz", tags=["ops"])
+    @application.get("/healthz", tags=["ops"], response_model=dict[str, str])
     async def healthz() -> dict[str, str]:
         return {"status": "ok"}
 
