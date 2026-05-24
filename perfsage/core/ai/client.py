@@ -1,16 +1,40 @@
-"""Unified AI client that dispatches to the configured LLM provider."""
+"""Abstract LLM client interface and factory."""
 
-from typing import Protocol
+from abc import ABC, abstractmethod
 
 
-class LLMProvider(Protocol):
-    """Common interface that every provider adapter must implement."""
+class LLMClient(ABC):
+    @abstractmethod
+    async def complete(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int = 2048,
+        timeout_seconds: float = 60.0,
+    ) -> str:
+        """Send a chat completion request. Return the text response."""
+        ...
 
-    async def complete(self, prompt: str, *, max_tokens: int = 2048) -> str:
-        """Send a prompt and return the model's text response."""
+    @abstractmethod
+    def provider_name(self) -> str:
+        """Return e.g. 'openai', 'anthropic', 'gemini'."""
         ...
 
 
-async def analyse_with_ai(metrics_json: str, provider: LLMProvider) -> str:
-    """Send metrics summary to the LLM and return a plain-text analysis."""
-    raise NotImplementedError
+def get_client(provider: str, api_key: str) -> LLMClient:
+    """Factory: return the right LLMClient for the given provider string."""
+    match provider.lower():
+        case "openai":
+            from perfsage.core.ai.providers.openai_provider import OpenAIClient
+
+            return OpenAIClient(api_key)
+        case "anthropic":
+            from perfsage.core.ai.providers.anthropic_provider import AnthropicClient
+
+            return AnthropicClient(api_key)
+        case "gemini":
+            from perfsage.core.ai.providers.gemini_provider import GeminiClient
+
+            return GeminiClient(api_key)
+        case _:
+            raise ValueError(f"Unknown LLM provider: {provider!r}")
