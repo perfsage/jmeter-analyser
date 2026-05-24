@@ -116,6 +116,63 @@ def sample_parquet_with_errors(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
+def sample_parquet_varying_rps(tmp_path: Path) -> Path:
+    """300 rows with uneven bucket density, producing varying RPS per bucket."""
+    base_ts = _BASE_TS
+    # Burst in first bucket (50 reqs in 10s), sparse in second (5 reqs), ramps up
+    timestamps: list[int] = []
+    elapsed: list[int] = []
+    for i in range(50):
+        timestamps.append(base_ts + i * 200)  # 50 reqs in ~10s → 5 RPS
+        elapsed.append(100 + i * 2)
+    for i in range(5):
+        timestamps.append(base_ts + 10_000 + i * 2000)  # 5 reqs in 10s → 0.5 RPS
+        elapsed.append(200 + i * 10)
+    for i in range(80):
+        timestamps.append(base_ts + 20_000 + i * 125)  # 80 reqs in 10s → 8 RPS
+        elapsed.append(150 + i)
+    n = len(timestamps)
+    success_list = [True] * n
+    label_list = ["Home" if i % 2 == 0 else "API" for i in range(n)]
+    latency_list = [max(0, e - 10) for e in elapsed]
+    df = pl.DataFrame(
+        {
+            "timestamp_ms": timestamps,
+            "elapsed": elapsed,
+            "label": label_list,
+            "response_code": ["200"] * n,
+            "response_message": ["OK"] * n,
+            "thread_name": ["Thread-1"] * n,
+            "success": success_list,
+            "failure_message": [""] * n,
+            "bytes": [1024] * n,
+            "sent_bytes": [256] * n,
+            "grp_threads": [10] * n,
+            "all_threads": [10] * n,
+            "url": ["http://example.com"] * n,
+            "latency": latency_list,
+            "idle_time": [0] * n,
+            "connect": [10] * n,
+        }
+    ).with_columns(
+        [
+            pl.col("timestamp_ms").cast(pl.Int64),
+            pl.col("elapsed").cast(pl.Int64),
+            pl.col("bytes").cast(pl.Int64),
+            pl.col("sent_bytes").cast(pl.Int64),
+            pl.col("grp_threads").cast(pl.Int64),
+            pl.col("all_threads").cast(pl.Int64),
+            pl.col("latency").cast(pl.Int64),
+            pl.col("idle_time").cast(pl.Int64),
+            pl.col("connect").cast(pl.Int64),
+        ]
+    )
+    path = tmp_path / "varying_rps.parquet"
+    df.write_parquet(path)
+    return path
+
+
+@pytest.fixture()
 def sample_parquet_with_spike(tmp_path: Path) -> Path:
     """100 rows; rows 90-99 are in a spike bucket (elapsed=5000 ms), rest=200 ms."""
     elapsed = [200 if i < 90 else 5000 for i in range(100)]

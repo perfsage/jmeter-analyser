@@ -11,17 +11,9 @@ import polars as pl
 from perfsage.core.analysis.anomalies import detect_knee_point
 from perfsage.core.analysis.metrics import compute_correlation_matrix
 from perfsage.core.viz._theme import AMBER, ERROR_RED, NAVY, apply_theme
+from perfsage.core.viz._utils import time_bucket as _time_bucket
 
 _SAMPLE_LIMIT = 50_000
-
-
-def _time_bucket(df: pl.DataFrame, bucket_seconds: int) -> pl.DataFrame:
-    bucket_ms = bucket_seconds * 1000
-    return df.with_columns(
-        (pl.col("timestamp_ms") // bucket_ms * bucket_ms)
-        .cast(pl.Datetime("ms"))
-        .alias("time_bucket")
-    )
 
 
 def fig_rt_vs_throughput(samples_path: Path, bucket_seconds: int = 10) -> go.Figure:
@@ -64,7 +56,7 @@ def fig_rt_vs_throughput(samples_path: Path, bucket_seconds: int = 10) -> go.Fig
     # Trendline via numpy polyfit
     rps_arr = agg["rps"].to_numpy()
     p90_arr = agg["p90"].to_numpy()
-    if len(rps_arr) >= 2:
+    if len(rps_arr) >= 2 and rps_arr.max() != rps_arr.min():
         coeffs = np.polyfit(rps_arr, p90_arr, 1)
         x_line = np.linspace(float(rps_arr.min()), float(rps_arr.max()), 100)
         y_line = np.polyval(coeffs, x_line)

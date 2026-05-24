@@ -63,9 +63,9 @@ def test_fig_rt_vs_throughput_scatter_mode(sample_parquet: Path) -> None:
     assert "markers" in fig.data[0].mode
 
 
-def test_fig_rt_vs_throughput_has_trendline(sample_parquet: Path) -> None:
-    fig = fig_rt_vs_throughput(sample_parquet)
-    # Should have at least 2 traces: scatter + trendline
+def test_fig_rt_vs_throughput_has_trendline(sample_parquet_varying_rps: Path) -> None:
+    fig = fig_rt_vs_throughput(sample_parquet_varying_rps)
+    # Should have at least 2 traces: scatter + trendline (requires varying RPS)
     assert len(fig.data) >= 2
 
 

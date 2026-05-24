@@ -18,16 +18,7 @@ from perfsage.core.viz._theme import (
     WARN_YELLOW,
     apply_theme,
 )
-
-
-def _time_bucket(df: pl.DataFrame, bucket_seconds: int) -> pl.DataFrame:
-    """Add a ``time_bucket`` column (Datetime ms) to *df*."""
-    bucket_ms = bucket_seconds * 1000
-    return df.with_columns(
-        (pl.col("timestamp_ms") // bucket_ms * bucket_ms)
-        .cast(pl.Datetime("ms"))
-        .alias("time_bucket")
-    )
+from perfsage.core.viz._utils import time_bucket as _time_bucket
 
 
 def fig_rt_over_time(samples_path: Path, bucket_seconds: int = 5) -> go.Figure:

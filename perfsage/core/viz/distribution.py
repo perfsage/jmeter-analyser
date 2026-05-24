@@ -85,6 +85,8 @@ def fig_latency_cdf(samples_path: Path) -> go.Figure:
         return apply_theme(go.Figure(), "Latency CDF")
 
     sorted_elapsed = df["elapsed"].sort().to_list()
+    step = max(1, len(sorted_elapsed) // 2000)
+    sorted_elapsed = sorted_elapsed[::step]
     n = len(sorted_elapsed)
     cdf_pct = [(i + 1) / n * 100 for i in range(n)]
 

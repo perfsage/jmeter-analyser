@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
 import polars as pl
@@ -19,9 +18,6 @@ from perfsage.core.viz._theme import (
     WARN_YELLOW,
     apply_theme,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 def _apdex_color(score: float) -> str:
