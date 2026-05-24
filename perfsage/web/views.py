@@ -34,7 +34,7 @@ async def dashboard(
     with get_session(engine) as session:
         repo = ReportRepo(session)
         all_reports = repo.list_all(limit=10000)
-        recent = repo.list_all(limit=5)
+        recent = all_reports[:5]
         total = len(all_reports)
         ready = sum(1 for r in all_reports if r.status == ReportStatus.READY)
         processing = sum(1 for r in all_reports if r.status == ReportStatus.PROCESSING)

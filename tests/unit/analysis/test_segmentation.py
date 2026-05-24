@@ -2,7 +2,6 @@
 from pathlib import Path
 
 import polars as pl
-import pytest
 
 from perfsage.core.analysis.segmentation import detect_warmup_window, get_steady_state_samples
 

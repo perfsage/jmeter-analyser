@@ -5,14 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import plotly.graph_objects as go
-import pytest
 
 from perfsage.core.viz.timeseries import (
     fig_bytes_over_time,
     fig_errors_over_time,
     fig_rt_over_time,
-    fig_throughput_over_time,
     fig_threads_vs_rt,
+    fig_throughput_over_time,
 )
 
 CREAM = "#F6F1E7"
