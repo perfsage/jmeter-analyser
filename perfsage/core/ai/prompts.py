@@ -93,6 +93,9 @@ def build_analysis_prompt(samples_path: Path, slo_config: SLOConfig | None = Non
     except Exception:
         pass
 
+    if not sections:
+        return ""
+
     prompt = (
         "Please analyse the following JMeter load test results and provide a detailed "
         "performance engineering assessment:\n\n"

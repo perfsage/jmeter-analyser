@@ -21,7 +21,7 @@ class GeminiClient(LLMClient):
     ) -> str:
         from google.genai import types as gtypes
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         response = await asyncio.wait_for(
             loop.run_in_executor(
                 None,

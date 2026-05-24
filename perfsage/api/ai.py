@@ -1,5 +1,7 @@
 """AI insights API endpoints."""
 
+import logging
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 
@@ -10,6 +12,8 @@ from perfsage.core.ai.prompts import SYSTEM_PROMPT, build_analysis_prompt
 from perfsage.core.storage.db import InsightSeverity, get_engine, get_session
 from perfsage.core.storage.files import FileStore
 from perfsage.core.storage.repos import AppSettingsRepo, InsightRepo, ReportRepo
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -65,8 +69,14 @@ async def generate_ai_insights(
             "Re-upload the file to regenerate.</div>"
         )
 
+    user_prompt = build_analysis_prompt(samples_path)
+    if not user_prompt.strip():
+        return (
+            '<div style="color:#E53E3E">Could not extract metrics from report data. '
+            "Ensure the report has been fully analysed.</div>"
+        )
+
     try:
-        user_prompt = build_analysis_prompt(samples_path)
         client = get_client(provider, api_key)
         narrative = await client.complete(
             system_prompt=SYSTEM_PROMPT,
@@ -79,8 +89,12 @@ async def generate_ai_insights(
             '<div style="color:#E53E3E">AI analysis timed out (90s). '
             "Try again or use a different provider.</div>"
         )
-    except Exception as exc:
-        return f'<div style="color:#E53E3E">AI analysis failed: {exc}</div>'
+    except Exception:
+        logger.exception("AI analysis failed for report %s", report_id)
+        return (
+            '<div style="color:#E53E3E">AI analysis failed. Check your API key and provider '
+            'configuration in <a href="/settings">Settings</a>.</div>'
+        )
 
     with get_session(engine) as session:
         InsightRepo(session).create(
