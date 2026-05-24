@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 
 def test_generate_pdf_report_creates_file(tmp_path: Path, sample_parquet: Path) -> None:
     from perfsage.core.export.pdf import generate_pdf_report

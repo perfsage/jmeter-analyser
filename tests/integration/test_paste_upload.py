@@ -49,10 +49,9 @@ def test_paste_csv_content(client: TestClient, _settings: Settings) -> None:
 
 
 def test_paste_creates_job(client: TestClient, _settings: Settings) -> None:
-    from tests.fixtures.generate_jtl import make_csv_jtl
-
     from perfsage.core.storage.db import get_session
     from perfsage.core.storage.repos import JobRepo
+    from tests.fixtures.generate_jtl import make_csv_jtl
 
     content = make_csv_jtl(n_rows=10)
     r = client.post("/api/uploads/paste", data={"content": content})
@@ -61,7 +60,7 @@ def test_paste_creates_job(client: TestClient, _settings: Settings) -> None:
     # Verify a job was created in the DB
     engine = get_engine(_settings.database_url)
     with get_session(engine) as session:
-        jobs = JobRepo(session).get_active_jobs()
+        JobRepo(session).get_active_jobs()
     # Job may be QUEUED (not active/running), check via list_all approach
     # The paste created exactly one report+job
     assert "progress-card" in r.text or "job_id" in r.text or "progress" in r.text.lower()

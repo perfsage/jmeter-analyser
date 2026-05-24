@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 
 def test_generate_html_report_creates_file(tmp_path: Path, sample_parquet: Path) -> None:
     from perfsage.core.export.html import generate_html_report
