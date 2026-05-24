@@ -7,8 +7,10 @@ Parquet, log, etc.).
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import polars as pl
@@ -19,6 +21,36 @@ class QuarantinedRow:
     row_index: int
     raw: dict[str, Any]
     reason: str
+
+
+# ─── quarantine writer ───────────────────────────────────────────────────────
+
+
+def write_quarantine_parquet(
+    quarantined: list[QuarantinedRow], dest: Path
+) -> None:
+    """Write quarantined rows to a Parquet file.
+
+    Always creates the file (even when the list is empty) so downstream
+    consumers can rely on its existence without extra existence checks.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if quarantined:
+        pl.DataFrame(
+            {
+                "row_index": [r.row_index for r in quarantined],
+                "reason": [r.reason for r in quarantined],
+                "raw_json": [json.dumps(r.raw, default=str) for r in quarantined],
+            }
+        ).write_parquet(dest)
+    else:
+        pl.DataFrame(
+            {
+                "row_index": pl.Series([], dtype=pl.Int64),
+                "reason": pl.Series([], dtype=pl.Utf8),
+                "raw_json": pl.Series([], dtype=pl.Utf8),
+            }
+        ).write_parquet(dest)
 
 
 # ─── low-level normalisation helpers ────────────────────────────────────────
@@ -121,6 +153,10 @@ def clean_dataframe(
 
     # ── timestamp_ms ──────────────────────────────────────────────────────
     if "timestamp_ms" in indexed.columns:
+        # Preserve the raw string so quarantine reasons can show the bad value.
+        indexed = indexed.with_columns(
+            pl.col("timestamp_ms").alias("_raw_ts_str")
+        )
 
         def _ts(v: Any) -> int | None:
             if v is None:
@@ -179,17 +215,28 @@ def clean_dataframe(
             elif isinstance(elapsed_val, int) and elapsed_val < 0:
                 reasons.append(f"elapsed is negative: {elapsed_val}")
             if ts_val is None:
-                reasons.append("timestamp_ms is null")
+                raw_ts = row.get("_raw_ts_str")
+                if raw_ts is None:
+                    reasons.append("missing required field: timestamp_ms")
+                else:
+                    reasons.append(f"unparseable timestamp: {repr(raw_ts)}")
             if not reasons:
                 reasons.append("invalid row")
-            raw = {k: v for k, v in row.items() if k != "_row_idx"}
+            raw = {
+                k: v
+                for k, v in row.items()
+                if k not in ("_row_idx", "_raw_ts_str")
+            }
             quarantined.append(
                 QuarantinedRow(row_index=row_idx, raw=raw, reason="; ".join(reasons))
             )
     else:
         good_df = indexed
 
-    clean = good_df.drop("_row_idx")
+    drop_cols = ["_row_idx"]
+    if "_raw_ts_str" in good_df.columns:
+        drop_cols.append("_raw_ts_str")
+    clean = good_df.drop(drop_cols)
 
     # ── cast remaining numeric columns ────────────────────────────────────
     int64_cols = ["bytes", "sent_bytes", "grp_threads", "all_threads", "latency", "idle_time", "connect"]

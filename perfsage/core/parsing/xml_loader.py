@@ -6,7 +6,6 @@ processing so the XML tree never grows beyond a single in-flight batch.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -16,7 +15,11 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from lxml import etree
 
-from perfsage.core.parsing.cleanup import QuarantinedRow, clean_dataframe
+from perfsage.core.parsing.cleanup import (
+    QuarantinedRow,
+    clean_dataframe,
+    write_quarantine_parquet,
+)
 from perfsage.core.parsing.schema import CANONICAL_SCHEMA
 
 CHUNK_ROWS = 50_000
@@ -116,25 +119,6 @@ def stream_xml(
     del context
 
 
-def _write_quarantine_parquet(rows: list[QuarantinedRow], path: Path) -> None:
-    if rows:
-        pl.DataFrame(
-            {
-                "row_index": [r.row_index for r in rows],
-                "reason": [r.reason for r in rows],
-                "raw_json": [json.dumps(r.raw, default=str) for r in rows],
-            }
-        ).write_parquet(path)
-    else:
-        pl.DataFrame(
-            {
-                "row_index": pl.Series([], dtype=pl.Int64),
-                "reason": pl.Series([], dtype=pl.Utf8),
-                "raw_json": pl.Series([], dtype=pl.Utf8),
-            }
-        ).write_parquet(path)
-
-
 def load_xml_to_parquet(
     src: Path,
     dest_parquet: Path,
@@ -144,11 +128,14 @@ def load_xml_to_parquet(
 
     Returns (parsed_rows, error_rows).
     """
+    # NOTE: quarantine rows are collected in-memory (bounded by ~1% error rate
+    # at CHUNK_ROWS=50_000 per flush). For pathological files with >50% error
+    # rate, a streaming quarantine writer would be needed. Acceptable for
+    # current scope.
     parsed_rows = 0
     all_quarantined: list[QuarantinedRow] = []
 
     dest_parquet.parent.mkdir(parents=True, exist_ok=True)
-    quarantine_parquet.parent.mkdir(parents=True, exist_ok=True)
 
     writer: pq.ParquetWriter | None = None
     try:
@@ -164,8 +151,23 @@ def load_xml_to_parquet(
                 arrow_table = arrow_table.select(
                     [f.name for f in chunk_fields]
                 ).cast(partial_schema)
+
             if writer is None:
                 writer = pq.ParquetWriter(dest_parquet, arrow_table.schema)  # type: ignore[no-untyped-call]
+            else:
+                # Align chunk to the established writer schema: fill any
+                # missing optional columns (e.g. url, failure_message) with
+                # nulls so ParquetWriter never sees a schema mismatch.
+                for field in writer.schema:
+                    if field.name not in arrow_table.schema.names:
+                        null_array = pa.array(
+                            [None] * len(arrow_table), type=field.type
+                        )
+                        arrow_table = arrow_table.append_column(field, null_array)
+                arrow_table = arrow_table.select(
+                    [f.name for f in writer.schema]
+                )
+
             writer.write_table(arrow_table)  # type: ignore[no-untyped-call]
     finally:
         if writer:
@@ -173,6 +175,6 @@ def load_xml_to_parquet(
         elif not dest_parquet.exists():
             pl.DataFrame().write_parquet(dest_parquet)
 
-    _write_quarantine_parquet(all_quarantined, quarantine_parquet)
+    write_quarantine_parquet(all_quarantined, quarantine_parquet)
 
     return parsed_rows, len(all_quarantined)
