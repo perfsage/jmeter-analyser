@@ -12,3 +12,9 @@ alwaysApply: true
 - **chrome-devtools**: use `--autoConnect`; enable remote debugging once in Chrome at `chrome://inspect/#remote-debugging` (Chrome 144+). Requires Chrome running with a normal profile.
 - **Magic MCP**: pass `API_KEY` via `env`, not as a CLI arg string in `args`.
 - **playwright** (`@playwright/mcp`): enabled in global `mcp.json` with `--browser=chrome` (system Chrome; no separate Chromium download).
+
+## Docker / ops
+
+- Production compose is a **single `app` service**: supervisord runs `redis-server` (127.0.0.1:6379), `arq` worker, and `uvicorn` in one container. Default `REDIS_URL=redis://127.0.0.1:6379`.
+- Reports list uses `ReportRepo.list_page` + `count()`; dashboard stats use `count_by_status()`, not `list_all(limit=10000)`.
+- `POST /api/reports/flush?keep_recent=N` deletes older reports plus parquet/exports/uploads; blocked while any report is `processing` unless `force=true`.

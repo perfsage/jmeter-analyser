@@ -26,18 +26,40 @@ def _engine(settings: Settings) -> Any:
     return get_engine(settings.database_url)
 
 
+def reports_list_context(
+    engine: Any,
+    *,
+    page: int = 1,
+    per_page: int = 25,
+) -> dict[str, Any]:
+    """Build template context for paginated reports list."""
+    page = max(1, page)
+    per_page = min(max(1, per_page), 100)
+    offset = (page - 1) * per_page
+    with get_session(engine) as session:
+        repo = ReportRepo(session)
+        total = repo.count()
+        reports = repo.list_page(offset=offset, limit=per_page)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    return {
+        "reports": reports,
+        "page": page,
+        "per_page": per_page,
+        "total_reports": total,
+        "total_pages": total_pages,
+    }
+
+
 @router.get("/", response_class=HTMLResponse)
-async def dashboard(
-    request: Request, settings: Settings = Depends(get_settings)
-) -> HTMLResponse:
+async def dashboard(request: Request, settings: Settings = Depends(get_settings)) -> HTMLResponse:
     engine = _engine(settings)
     with get_session(engine) as session:
         repo = ReportRepo(session)
-        all_reports = repo.list_all(limit=10000)
-        recent = all_reports[:5]
-        total = len(all_reports)
-        ready = sum(1 for r in all_reports if r.status == ReportStatus.READY)
-        processing = sum(1 for r in all_reports if r.status == ReportStatus.PROCESSING)
+        recent = repo.list_page(offset=0, limit=5)
+        by_status = repo.count_by_status()
+        total = repo.count()
+        ready = by_status.get(ReportStatus.READY, 0)
+        processing = by_status.get(ReportStatus.PROCESSING, 0)
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -52,12 +74,16 @@ async def dashboard(
 
 @router.get("/reports", response_class=HTMLResponse)
 async def reports_list(
-    request: Request, settings: Settings = Depends(get_settings)
+    request: Request,
+    page: int = 1,
+    per_page: int = 25,
+    settings: Settings = Depends(get_settings),
 ) -> HTMLResponse:
     engine = _engine(settings)
-    with get_session(engine) as session:
-        reports = ReportRepo(session).list_all(limit=200)
-    return templates.TemplateResponse(request, "reports_list.html", {"reports": reports})
+    ctx = reports_list_context(engine, page=page, per_page=per_page)
+    if request.headers.get("HX-Request"):
+        return templates.TemplateResponse(request, "partials/reports_table.html", ctx)
+    return templates.TemplateResponse(request, "reports_list.html", ctx)
 
 
 @router.get("/reports/{report_id}", response_class=HTMLResponse)

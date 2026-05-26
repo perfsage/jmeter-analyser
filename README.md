@@ -15,6 +15,8 @@
 
 ### Docker (recommended)
 
+One container runs **Redis**, the **background worker**, and the **web server** (supervisord).
+
 ```bash
 # Clone and start
 git clone https://github.com/perfsage/jmeter-analyser
@@ -24,12 +26,14 @@ cd jmeter-analyser
 cp .env.example .env
 # Edit .env — set PERFSAGE_SECRET to a random 32-char string
 
-# Start
+# Start (single app service)
 docker compose up -d
 
 # Open
 open http://localhost:8000
 ```
+
+Use **All Reports** → **Flush old reports** to remove older analyses (keeps the 5 most recent). The list is paginated (25 per page).
 
 ### Local Development
 
@@ -57,7 +61,7 @@ arq perfsage.core.jobs.queue.WorkerSettings
 | Variable | Default | Description |
 |---|---|---|
 | `PERFSAGE_SECRET` | (required) | Secret key for encrypting AI API keys. Must be set. |
-| `REDIS_URL` | `redis://redis:6379` | Redis URL for job queue |
+| `REDIS_URL` | `redis://127.0.0.1:6379` | Redis URL (bundled in Docker image) |
 | `DATABASE_URL` | `sqlite:///./data/perfsage.db` | SQLite database path |
 | `DATA_DIR` | `data` | Directory for Parquet files and exports |
 | `MAX_UPLOAD_BYTES` | `2147483648` (2GB) | Maximum upload file size |
@@ -77,8 +81,8 @@ Keys are encrypted at rest using Fernet (AES-128-CBC) with a key derived from `P
 ```
 Browser (HTMX + Plotly)
     ↔ FastAPI (uvicorn) — web views + REST API
-    → Redis (arq job queue + SSE progress)
-    → arq worker (ingest + analysis)
+    → Redis (arq job queue + SSE progress, bundled in container)
+    → arq worker (ingest + analysis, same container)
     → SQLite (report metadata)
     → Parquet files (samples + aggregates)
     → LLM provider (AI insights)

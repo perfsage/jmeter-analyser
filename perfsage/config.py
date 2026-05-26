@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     debug: bool = False
     database_url: str = "sqlite:///./data/perfsage.db"
     data_dir: Path = Path("data")
-    redis_url: str = "redis://localhost:6379"
+    redis_url: str = "redis://127.0.0.1:6379"
     perfsage_secret: str = ""  # must be set via env; validator rejects empty/default
     max_upload_bytes: int = 2 * 1024**3  # 2 GB
 

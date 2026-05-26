@@ -58,3 +58,7 @@ table.data-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #E2E8F0; f
 /* Footer */
 footer { background: var(--navy); color: var(--cream); text-align: center; padding: 1.5rem; margin-top: 4rem; font-size: 0.875rem; }
 footer a { color: var(--amber); text-decoration: none; }
+
+.alert-success { background: #c6f6d5; color: #22543d; padding: 0.75rem 1rem; border-radius: 6px; }
+.alert-error { background: #fed7d7; color: #742a2a; padding: 0.75rem 1rem; border-radius: 6px; }
+.pagination a { text-decoration: none; }

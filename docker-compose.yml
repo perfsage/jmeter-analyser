@@ -1,23 +1,11 @@
 services:
-  web:
+  app:
     build: .
     env_file: .env
+    environment:
+      REDIS_URL: redis://127.0.0.1:6379
     ports:
       - "8000:8000"
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./data:/app/data
-    restart: unless-stopped
-
-  worker:
-    build: .
-    command: ["python", "-m", "arq", "perfsage.core.jobs.queue.WorkerSettings"]
-    env_file: .env
-    depends_on:
-      redis:
-        condition: service_healthy
     volumes:
       - ./data:/app/data
     restart: unless-stopped
@@ -25,17 +13,3 @@ services:
       resources:
         limits:
           memory: 4G
-
-  redis:
-    image: redis:7-alpine
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
-
-volumes:
-  redis-data:

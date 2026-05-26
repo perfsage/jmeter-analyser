@@ -6,7 +6,8 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlmodel import Session, select
+from sqlalchemy import func
+from sqlmodel import Session, col, select
 
 from perfsage.core.storage.db import (
     AppSettings,
@@ -34,7 +35,21 @@ class ReportRepo:
         return self._s.get(Report, report_id)
 
     def list_all(self, limit: int = 100) -> list[Report]:
-        return list(self._s.exec(select(Report).limit(limit)).all())
+        return self.list_page(offset=0, limit=limit)
+
+    def list_page(self, offset: int = 0, limit: int = 25) -> list[Report]:
+        stmt = select(Report).order_by(col(Report.created_at).desc()).offset(offset).limit(limit)
+        return list(self._s.exec(stmt).all())
+
+    def count(self) -> int:
+        result = self._s.exec(select(func.count()).select_from(Report)).one()
+        return int(result)
+
+    def count_by_status(self) -> dict[ReportStatus, int]:
+        rows = self._s.exec(
+            select(Report.status, func.count()).group_by(Report.status)  # type: ignore[arg-type]
+        ).all()
+        return {ReportStatus(status): int(cnt) for status, cnt in rows}
 
     def update_status(self, report_id: str, status: ReportStatus) -> None:
         report = self._s.get(Report, report_id)

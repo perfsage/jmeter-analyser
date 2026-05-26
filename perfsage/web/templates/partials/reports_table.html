@@ -1,0 +1,41 @@
+{% if flush_message %}
+<div class="alert alert-success" style="margin-bottom:1rem">{{ flush_message }}</div>
+{% endif %}
+{% if reports %}
+<table class="data-table">
+  <thead><tr><th>Name</th><th>File</th><th>Status</th><th>Rows</th><th>Errors</th><th>Created</th><th></th></tr></thead>
+  <tbody>
+  {% for r in reports %}
+  <tr>
+    <td>{{ r.name }}</td>
+    <td style="font-family:var(--font-mono);font-size:0.75rem">{{ r.source_filename }}</td>
+    <td><span class="badge-{{ r.status.value }}">{{ r.status.value }}</span></td>
+    <td>{{ "{:,}".format(r.parsed_row_count) }}</td>
+    <td>{{ "{:,}".format(r.error_row_count) }}</td>
+    <td>{{ r.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+    <td><a href="/reports/{{ r.id }}" class="btn-outline" style="font-size:0.75rem;padding:0.25rem 0.75rem">View</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if total_pages > 1 %}
+<nav class="pagination" style="display:flex;gap:0.5rem;align-items:center;margin-top:1rem;flex-wrap:wrap">
+  {% if page > 1 %}
+  <a href="/reports?page={{ page - 1 }}&per_page={{ per_page }}" class="btn-outline"
+     hx-get="/reports?page={{ page - 1 }}&per_page={{ per_page }}"
+     hx-target="#reports-table" hx-swap="innerHTML">← Prev</a>
+  {% endif %}
+  <span style="font-size:0.875rem;color:#718096">Page {{ page }} of {{ total_pages }} ({{ total_reports }} reports)</span>
+  {% if page < total_pages %}
+  <a href="/reports?page={{ page + 1 }}&per_page={{ per_page }}" class="btn-outline"
+     hx-get="/reports?page={{ page + 1 }}&per_page={{ per_page }}"
+     hx-target="#reports-table" hx-swap="innerHTML">Next →</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div style="text-align:center;padding:3rem;color:#718096">
+  <p style="font-size:1.25rem">No reports yet.</p>
+  <a href="/" class="btn-primary" style="display:inline-block;margin-top:1rem">Upload your first JTL</a>
+</div>
+{% endif %}
