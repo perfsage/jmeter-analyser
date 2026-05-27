@@ -44,4 +44,5 @@ def render_ai_markdown(text: str) -> str:
         text,
         extensions=["fenced_code", "tables", "nl2br", "sane_lists"],
     )
-    return bleach.clean(html, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS, strip=True)
+    cleaned = bleach.clean(html, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS, strip=True)
+    return str(cleaned)

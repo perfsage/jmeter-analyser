@@ -402,7 +402,7 @@ def fig_steady_state_compare(samples_path: Path) -> go.Figure:
         if frame.is_empty():
             return 0.0
         val = frame["elapsed"].quantile(q, interpolation="linear")
-        return float(val) if val is not None else 0.0  # type: ignore[arg-type]
+        return float(val) if val is not None else 0.0
 
     w90, w99 = pct(warmup_df, 0.90), pct(warmup_df, 0.99)
     s90, s99 = pct(steady_df, 0.90), pct(steady_df, 0.99)
