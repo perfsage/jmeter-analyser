@@ -22,7 +22,7 @@ def test_html_export_footer_helper() -> None:
     html = _render_export_footer("2026-01-01 00:00 UTC")
     assert "export-footer" in html
     assert "PerfSage" in html
-    assert '<footer' not in html
+    assert "<footer" not in html
 
 
 @pytest.mark.slow
@@ -45,7 +45,7 @@ def test_generate_html_report_full(tmp_path: Path, sample_parquet: Path) -> None
     assert "Plotly.newPlot" in content
     assert "cdn.plot.ly" not in content
     assert "export-footer" in content
-    assert '<footer' not in content
+    assert "<footer" not in content
     assert "Label" in content and "Count" in content
     assert "Recommendations" in content or "No issues" in content
     assert "Generated" in content and "UTC" in content

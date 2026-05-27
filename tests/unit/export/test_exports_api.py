@@ -1,7 +1,7 @@
 """Unit tests for export regeneration logic."""
 
-from pathlib import Path
 import time
+from pathlib import Path
 
 from perfsage.api.exports import _should_regenerate
 

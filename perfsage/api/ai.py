@@ -21,9 +21,7 @@ from perfsage.core.storage.repos import AppSettingsRepo, InsightRepo, ReportRepo
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ai", tags=["ai"])
-_templates = Jinja2Templates(
-    directory=str(Path(__file__).parent.parent / "web" / "templates")
-)
+_templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "web" / "templates"))
 
 
 def _render_ai_html(request: Request, narrative: str) -> HTMLResponse:

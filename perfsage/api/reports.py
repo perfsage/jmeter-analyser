@@ -14,9 +14,7 @@ from perfsage.core.storage.db import get_engine
 from perfsage.core.storage.report_cleanup import flush_reports
 
 router = APIRouter(prefix="/reports", tags=["reports"])
-_templates = Jinja2Templates(
-    directory=str(Path(__file__).parent.parent / "web" / "templates")
-)
+_templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "web" / "templates"))
 
 
 class FlushResult(BaseModel):
@@ -59,6 +57,4 @@ async def flush_old_reports(
             ctx,
         )
 
-    return JSONResponse(
-        content=FlushResult(deleted=deleted, keep_recent=keep_recent).model_dump()
-    )
+    return JSONResponse(content=FlushResult(deleted=deleted, keep_recent=keep_recent).model_dump())

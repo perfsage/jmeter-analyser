@@ -5,10 +5,29 @@ from __future__ import annotations
 import bleach
 import markdown
 
-
 _ALLOWED_TAGS = [
-    "h1", "h2", "h3", "h4", "p", "ul", "ol", "li", "strong", "em", "code", "pre",
-    "blockquote", "table", "thead", "tbody", "tr", "th", "td", "a", "hr", "br",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "p",
+    "ul",
+    "ol",
+    "li",
+    "strong",
+    "em",
+    "code",
+    "pre",
+    "blockquote",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "a",
+    "hr",
+    "br",
 ]
 _ALLOWED_ATTRS: dict[str, list[str]] = {
     "a": ["href", "title", "rel", "target"],

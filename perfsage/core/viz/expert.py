@@ -88,7 +88,9 @@ def fig_sli_burn_rate_timeline(
         )
     )
 
-    fig.add_hline(y=cfg.error_rate_pct, yref="y", line=dict(color=WARN_YELLOW, width=2, dash="dash"))
+    fig.add_hline(
+        y=cfg.error_rate_pct, yref="y", line=dict(color=WARN_YELLOW, width=2, dash="dash")
+    )
     fig.add_hline(y=cfg.p99_ms, yref="y2", line=dict(color=AMBER, width=2, dash="dash"))
 
     apply_theme(fig, title)
@@ -114,11 +116,21 @@ def fig_percentile_fan(samples_path: Path, bucket_seconds: int = 5) -> go.Figure
     if df.is_empty():
         return apply_theme(go.Figure(), title)
 
-    qs = [(0.50, "p50"), (0.60, "p60"), (0.70, "p70"), (0.80, "p80"), (0.90, "p90"), (0.95, "p95"), (0.99, "p99")]
+    qs = [
+        (0.50, "p50"),
+        (0.60, "p60"),
+        (0.70, "p70"),
+        (0.80, "p80"),
+        (0.90, "p90"),
+        (0.95, "p95"),
+        (0.99, "p99"),
+    ]
     agg_exprs = [
         pl.col("elapsed").quantile(q, interpolation="linear").alias(name) for q, name in qs
     ]
-    agg = _time_bucket(df, bucket_seconds).group_by("time_bucket").agg(agg_exprs).sort("time_bucket")
+    agg = (
+        _time_bucket(df, bucket_seconds).group_by("time_bucket").agg(agg_exprs).sort("time_bucket")
+    )
     times = agg["time_bucket"].to_list()
 
     fig = go.Figure()
@@ -179,7 +191,9 @@ def fig_transaction_mix(samples_path: Path, bucket_seconds: int = 10) -> go.Figu
     for idx, lbl in enumerate(labels):
         sub = shares.filter(pl.col("label") == lbl).sort("time_bucket")
         # align to full time index for continuous areas
-        time_to_share = dict(zip(sub["time_bucket"].to_list(), sub["share_pct"].to_list(), strict=True))
+        time_to_share = dict(
+            zip(sub["time_bucket"].to_list(), sub["share_pct"].to_list(), strict=True)
+        )
         y = [float(time_to_share.get(t, 0.0)) for t in times_master]
         color = LABEL_COLORS[idx % len(LABEL_COLORS)]
         fig.add_trace(
@@ -245,7 +259,9 @@ def fig_outlier_scatter(samples_path: Path, sample_limit: int = 5000) -> go.Figu
             continue
         lo_hi = fences.get(str(lbl), (-float("inf"), float("inf")))
         low, high = lo_hi
-        sub = sub.with_columns(((pl.col("elapsed") < low) | (pl.col("elapsed") > high)).alias("_out"))
+        sub = sub.with_columns(
+            ((pl.col("elapsed") < low) | (pl.col("elapsed") > high)).alias("_out")
+        )
         typical = sub.filter(~pl.col("_out"))
         outlier = sub.filter(pl.col("_out"))
         base_color = LABEL_COLORS[idx % len(LABEL_COLORS)]
@@ -344,7 +360,9 @@ def fig_throughput_efficiency(samples_path: Path, bucket_seconds: int = 10) -> g
         .with_columns(
             (
                 (pl.col("bytes_sum") + pl.col("sent_sum"))
-                / pl.when(pl.col("elapsed_sum") == 0).then(pl.lit(None)).otherwise(pl.col("elapsed_sum"))
+                / pl.when(pl.col("elapsed_sum") == 0)
+                .then(pl.lit(None))
+                .otherwise(pl.col("elapsed_sum"))
             ).alias("bytes_per_ms")
         )
     )
@@ -465,5 +483,3 @@ def fig_threads_error_heatmap(samples_path: Path) -> go.Figure:
         yaxis_title="Mean active threads",
     )
     return fig
-
-

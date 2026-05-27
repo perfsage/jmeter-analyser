@@ -35,9 +35,7 @@ def test_pdf_build_html_includes_chart_img(tmp_path: Path, sample_parquet: Path)
     png = tmp_path / "fig-rt-scatter.png"
     png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * 100)
     chart_imgs = [("fig-rt-scatter", "RT Scatter", png)]
-    html = pdf_mod._build_html_for_tests(
-        sample_parquet, "Test", "2026-01-01", chart_imgs, None, 1
-    )
+    html = pdf_mod._build_html_for_tests(sample_parquet, "Test", "2026-01-01", chart_imgs, None, 1)
     assert '<img class="chart"' in html
     assert "Chart not available." not in html
 

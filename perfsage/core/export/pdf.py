@@ -62,7 +62,11 @@ def _ensure_kaleido_browser() -> None:
     ]
     browser = next((p for p in candidates if p and Path(p).is_file()), None)
     if browser is None:
-        browser = shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("google-chrome")
+        browser = (
+            shutil.which("chromium")
+            or shutil.which("chromium-browser")
+            or shutil.which("google-chrome")
+        )
     if browser:
         os.environ["BROWSER_PATH"] = browser
         os.environ["CHROME_PATH"] = browser

@@ -14,12 +14,12 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from perfsage._version import __version__
 from perfsage.api import ai, exports, jobs, reports, uploads
 from perfsage.api import settings as settings_router
 from perfsage.config import Settings, get_settings
 from perfsage.core.storage.db import JobStatus, get_engine, get_session
 from perfsage.core.storage.repos import JobRepo
-from perfsage._version import __version__
 from perfsage.web.views import router as web_router
 
 
