@@ -1,7 +1,13 @@
 # Changelog
 
-All notable changes to **PerfSage JMeter Analyser** are documented here.
+All notable changes to **PerfSage Reveal** are documented here.
 Version numbers follow [Semantic Versioning](https://semver.org/) and align with git tags (`v0.1.0`).
+
+## [0.1.1] — 2026-05-27
+
+### Changed
+- 🏷 **Rebrand** from *PerfSage JMeter Analyser* → **PerfSage Reveal**
+- GitHub repo: `perfsage/reveal` · Docker image: `perfsage/reveal`
 
 ## [0.1.0] — 2026-05-26
 
@@ -17,4 +23,5 @@ Version numbers follow [Semantic Versioning](https://semver.org/) and align with
 ### Fixed
 - 🐛 PDF chart export in Docker — supervisord now sets `HOME`, `BROWSER_PATH`, and `CHROME_PATH` for the `perfsage` user
 
-[0.1.0]: https://github.com/perfsage/jmeter-analyser/releases/tag/v0.1.0
+[0.1.1]: https://github.com/perfsage/reveal/releases/tag/v0.1.1
+[0.1.0]: https://github.com/perfsage/reveal/releases/tag/v0.1.0

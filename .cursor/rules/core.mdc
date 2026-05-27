@@ -25,3 +25,4 @@ alwaysApply: true
 - Per-label scatter colors: `LABEL_COLORS`; stacked expert series: `LABEL_PALETTE` in `_theme.py`; expert charts in `expert.py`.
 - **supervisord `environment=` replaces the entire env** — include `HOME=/home/perfsage`, `BROWSER_PATH`/`CHROME_PATH` for web+worker or kaleido PDF charts fail (`Permission denied` on `/root/.local/share/choreographer/...`).
 - **Versioning:** repo-root `VERSION` file → hatch `pyproject.toml`, `perfsage/_version.py`, Docker `ARG PERFSAGE_VERSION`, Hub tags via `.github/workflows/docker-publish.yml`.
+- **Product:** **PerfSage Reveal** — GitHub `perfsage/reveal`, Docker `perfsage/reveal`.

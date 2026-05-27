@@ -211,7 +211,7 @@ def generate_html_report(
 </head>
 <body>
   <nav class="navbar">
-    <div>PerfSage Analyser</div>
+    <div>PerfSage Reveal</div>
     <span style="margin-left:auto;font-size:0.875rem">Generated {timestamp}</span>
   </nav>
   <main style="max-width:1280px;margin:0 auto;padding:2rem">

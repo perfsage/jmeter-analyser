@@ -127,7 +127,7 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
 def create_app() -> FastAPI:
     """Construct and return the FastAPI application."""
     application = FastAPI(
-        title="PerfSage JMeter Analyser",
+        title="PerfSage Reveal",
         version=__version__,
         lifespan=lifespan,
     )

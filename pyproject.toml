@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "perfsage"
 dynamic = ["version"]
-description = "PerfSage JMeter Analyser — a Python-only, Dockerised, browser-based JMeter result analyser"
+description = "PerfSage Reveal — AI-powered JMeter report analysis with 29 expert visualizations, SLO insights, and HTML/PDF export"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

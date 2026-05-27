@@ -55,9 +55,9 @@ COPY VERSION /app/VERSION
 COPY docker/supervisord.conf /etc/supervisor/conf.d/perfsage.conf
 
 ARG PERFSAGE_VERSION=0.1.0
-LABEL org.opencontainers.image.title="PerfSage JMeter Analyser" \
-      org.opencontainers.image.description="AI-powered JMeter performance report analysis" \
-      org.opencontainers.image.source="https://github.com/perfsage/jmeter-analyser" \
+LABEL org.opencontainers.image.title="PerfSage Reveal" \
+      org.opencontainers.image.description="AI-powered JMeter performance report analysis — uncover what your load test really means" \
+      org.opencontainers.image.source="https://github.com/perfsage/reveal" \
       org.opencontainers.image.version="${PERFSAGE_VERSION}" \
       org.opencontainers.image.vendor="PerfSage"
 

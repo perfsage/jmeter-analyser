@@ -1,14 +1,14 @@
-# PerfSage JMeter Analyser
+# PerfSage Reveal
 
 **Turn raw JMeter results into actionable performance intelligence — in one container.**
 
-[![GitHub](https://img.shields.io/badge/GitHub-perfsage%2Fjmeter--analyser-0B1F3A?style=flat&logo=github)](https://github.com/perfsage/jmeter-analyser)
+[![GitHub](https://img.shields.io/badge/GitHub-perfsage%2Freveal-0B1F3A?style=flat&logo=github)](https://github.com/perfsage/reveal)
 
 ---
 
 ## 🎯 What it does
 
-PerfSage ingests JTL / CSV / XML load-test output and delivers:
+**PerfSage Reveal** ingests JTL / CSV / XML load-test output and delivers:
 
 - **29 interactive charts** — latency scatter, percentile bands, throughput, heatmaps, CDF, APDEX, SLO gauges
 - **Expert recommendations** — tail-latency ratio, saturation knee, error spikes, SLO violations
@@ -23,11 +23,11 @@ PerfSage ingests JTL / CSV / XML load-test output and delivers:
 
 ```bash
 docker run -d \
-  --name perfsage \
+  --name perfsage-reveal \
   -p 8000:8000 \
-  -v perfsage-data:/app/data \
+  -v perfsage-reveal-data:/app/data \
   -e PERFSAGE_SECRET="your-32-char-random-secret-here" \
-  perfsage/jmeter-analyser:latest
+  perfsage/reveal:latest
 ```
 
 Open **http://localhost:8000** → upload a `.jtl` / `.csv` / `.xml` file → explore charts → export HTML or PDF.
@@ -39,7 +39,7 @@ Open **http://localhost:8000** → upload a `.jtl` / `.csv` / `.xml` file → ex
 | Tag | Description |
 |-----|-------------|
 | `latest` | Latest build from `main` |
-| `0.1.0` | Semver release (see [CHANGELOG](https://github.com/perfsage/jmeter-analyser/blob/main/CHANGELOG.md)) |
+| `0.1.1` | Semver release (see [CHANGELOG](https://github.com/perfsage/reveal/blob/main/CHANGELOG.md)) |
 | `sha-<commit>` | Immutable build for a specific commit |
 
 ---
@@ -76,8 +76,8 @@ Browser (HTMX + Plotly)
 
 ## 📚 Documentation
 
-- **Full README:** [github.com/perfsage/jmeter-analyser](https://github.com/perfsage/jmeter-analyser)
-- **Issues & releases:** [GitHub Releases](https://github.com/perfsage/jmeter-analyser/releases)
+- **Full README:** [github.com/perfsage/reveal](https://github.com/perfsage/reveal)
+- **Issues & releases:** [GitHub Releases](https://github.com/perfsage/reveal/releases)
 - **License:** MIT
 
 ---
@@ -85,8 +85,8 @@ Browser (HTMX + Plotly)
 ## 🛠 Docker Compose (recommended)
 
 ```bash
-git clone https://github.com/perfsage/jmeter-analyser.git
-cd jmeter-analyser
+git clone https://github.com/perfsage/reveal.git
+cd reveal
 cp .env.example .env   # set PERFSAGE_SECRET
 docker compose up -d
 ```

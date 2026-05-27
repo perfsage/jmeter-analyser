@@ -2,7 +2,7 @@
 
 ## GitHub repository secrets
 
-Add these under **Settings → Secrets and variables → Actions** in `perfsage/jmeter-analyser`:
+Add these under **Settings → Secrets and variables → Actions** in [perfsage/reveal](https://github.com/perfsage/reveal):
 
 | Secret | Description |
 |--------|-------------|
@@ -13,8 +13,8 @@ Add these under **Settings → Secrets and variables → Actions** in `perfsage/
 
 | Event | CI | Docker Publish |
 |-------|-----|----------------|
-| Push to `main` | Ruff, mypy, pytest | Builds multi-arch image → `perfsage/jmeter-analyser:latest`, `:0.1.0`, `:sha-…` |
-| Tag `v*` | Same | Also pushes semver tag (e.g. `:0.1.0`) |
+| Push to `main` | Ruff, mypy, pytest | Builds multi-arch image → `perfsage/reveal:latest`, `:0.1.1`, `:sha-…` |
+| Tag `v*` | Same | Also pushes semver tag (e.g. `:0.1.1`) |
 | Pull request | CI only | — |
 
 Docker Hub README is synced from [`docs/DOCKERHUB.md`](DOCKERHUB.md) on every publish.
@@ -22,5 +22,5 @@ Docker Hub README is synced from [`docs/DOCKERHUB.md`](DOCKERHUB.md) on every pu
 ## Release checklist
 
 1. Update [`VERSION`](../VERSION) and [`CHANGELOG.md`](../CHANGELOG.md)
-2. Commit: `git commit -m "release: v0.1.0"`
-3. Tag: `git tag v0.1.0 && git push origin main --tags`
+2. Commit: `git commit -m "release: v0.1.1"`
+3. Tag: `git tag v0.1.1 && git push origin main --tags`

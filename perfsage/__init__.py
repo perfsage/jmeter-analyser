@@ -1,4 +1,4 @@
-"""PerfSage JMeter Analyser — top-level package."""
+"""PerfSage Reveal — top-level package."""
 
 from perfsage._version import __version__
 

@@ -1,27 +1,27 @@
 <div align="center">
 
-# ⚡ PerfSage JMeter Analyser
+# ✨ PerfSage Reveal
 
-### *Generating value in performance analysis*
+### *Uncover what your load test really means*
 
-**Upload JMeter results → get expert charts, SLO insights, AI narratives, and shareable HTML/PDF reports.**
+**Generating value in performance analysis** — upload JMeter results, get expert charts, SLO insights, AI narratives, and shareable HTML/PDF reports.
 
-[![Docker Hub](https://img.shields.io/docker/v/perfsage/jmeter-analyser?label=Docker%20Hub&logo=docker&color=2496ED)](https://hub.docker.com/r/perfsage/jmeter-analyser)
-[![Version](https://img.shields.io/badge/version-0.1.0-D4A857)](VERSION)
+[![Docker Hub](https://img.shields.io/docker/v/perfsage/reveal?label=Docker%20Hub&logo=docker&color=2496ED)](https://hub.docker.com/r/perfsage/reveal)
+[![Version](https://img.shields.io/badge/version-0.1.1-D4A857)](VERSION)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-0B1F3A)](LICENSE)
 
-[🚀 Quick Start](#-installation) · [📊 Features](#-features) · [🐳 Docker Hub](https://hub.docker.com/r/perfsage/jmeter-analyser) · [📦 Releases](https://github.com/perfsage/jmeter-analyser/releases)
+[🚀 Quick Start](#-installation) · [📊 Features](#-features) · [🐳 Docker Hub](https://hub.docker.com/r/perfsage/reveal) · [📦 Releases](https://github.com/perfsage/reveal/releases)
 
 </div>
 
 ---
 
-## 🎯 Why PerfSage?
+## 🎯 Why PerfSage Reveal?
 
 Load tests produce **millions of rows** — but stakeholders need **answers**, not spreadsheets.
 
-PerfSage transforms raw JTL / CSV / XML into:
+**Reveal** transforms raw JTL / CSV / XML into clarity:
 
 | | |
 |---|---|
@@ -54,14 +54,14 @@ Choose the path that fits your workflow:
 ### Option 1 — Docker Hub pull *(fastest)*
 
 ```bash
-docker pull perfsage/jmeter-analyser:latest
+docker pull perfsage/reveal:latest
 
 docker run -d \
-  --name perfsage \
+  --name perfsage-reveal \
   -p 8000:8000 \
-  -v perfsage-data:/app/data \
+  -v perfsage-reveal-data:/app/data \
   -e PERFSAGE_SECRET="change-me-to-a-32-char-random-string" \
-  perfsage/jmeter-analyser:latest
+  perfsage/reveal:latest
 ```
 
 Open **http://localhost:8000** 🎉
@@ -71,8 +71,8 @@ Open **http://localhost:8000** 🎉
 ### Option 2 — Docker Compose *(recommended for teams)*
 
 ```bash
-git clone https://github.com/perfsage/jmeter-analyser.git
-cd jmeter-analyser
+git clone https://github.com/perfsage/reveal.git
+cd reveal
 
 cp .env.example .env
 # ✏️ Edit .env — set PERFSAGE_SECRET to a random 32+ character string
@@ -87,22 +87,22 @@ Open **http://localhost:8000** · View logs with `docker compose logs -f`
 ### Option 3 — Build from source
 
 ```bash
-git clone https://github.com/perfsage/jmeter-analyser.git
-cd jmeter-analyser
+git clone https://github.com/perfsage/reveal.git
+cd reveal
 
 docker compose build
 docker compose up -d
 ```
 
-Every push to `main` triggers a CI build → [Docker Hub](https://hub.docker.com/r/perfsage/jmeter-analyser).
+Every push to `main` triggers a CI build → [Docker Hub](https://hub.docker.com/r/perfsage/reveal).
 
 ---
 
 ### Option 4 — Local Python development
 
 ```bash
-git clone https://github.com/perfsage/jmeter-analyser.git
-cd jmeter-analyser
+git clone https://github.com/perfsage/reveal.git
+cd reveal
 
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[test]"
@@ -188,17 +188,17 @@ Versions are tracked in-repo:
 
 | File | Purpose |
 |------|---------|
-| [`VERSION`](VERSION) | Current semver (`0.1.0`) — used by Docker tags & health check |
+| [`VERSION`](VERSION) | Current semver — used by Docker tags & health check |
 | [`CHANGELOG.md`](CHANGELOG.md) | Release notes |
-| Git tags | `v0.1.0`, `v0.2.0`, … — trigger semver Docker Hub tags |
+| Git tags | `v0.1.0`, `v0.1.1`, … — trigger semver Docker Hub tags |
 
 **Release flow:**
 
 ```bash
 # 1. Bump VERSION + CHANGELOG.md
 # 2. Commit and tag
-git tag v0.1.0 && git push origin main --tags
-# 3. GitHub Actions builds & pushes perfsage/jmeter-analyser:0.1.0 + :latest
+git tag v0.1.1 && git push origin main --tags
+# 3. GitHub Actions builds & pushes perfsage/reveal:0.1.1 + :latest
 ```
 
 ---
@@ -224,6 +224,8 @@ pytest tests/e2e/ -q               # requires app at localhost:8000
 
 **Required GitHub secrets:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
 
+See [`docs/GITHUB_SECRETS.md`](docs/GITHUB_SECRETS.md) for setup.
+
 ---
 
 ## 📄 License
@@ -234,8 +236,8 @@ MIT — see [LICENSE](LICENSE).
 
 <div align="center">
 
-**Built by [PerfSage](https://github.com/perfsage)** · *Generating value in performance analysis* ⚡
+**Built by [PerfSage](https://github.com/perfsage)** · *Generating value in performance analysis* ✨
 
-[Docker Hub](https://hub.docker.com/r/perfsage/jmeter-analyser) · [GitHub](https://github.com/perfsage/jmeter-analyser) · [Report an issue](https://github.com/perfsage/jmeter-analyser/issues)
+[Docker Hub](https://hub.docker.com/r/perfsage/reveal) · [GitHub](https://github.com/perfsage/reveal) · [Report an issue](https://github.com/perfsage/reveal/issues)
 
 </div>
