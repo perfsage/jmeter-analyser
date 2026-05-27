@@ -65,9 +65,10 @@ ENV REDIS_URL=redis://127.0.0.1:6379
 ENV BROWSER_PATH=/usr/bin/chromium
 ENV CHROME_PATH=/usr/bin/chromium
 
-# Warm kaleido/choreographer as the runtime user so PDF chart export works on first request.
+# Warm kaleido/choreographer as the runtime user (best-effort; may skip on emulated builds).
 USER perfsage
-RUN python -c "import plotly.graph_objects as go; go.Figure(data=[go.Scatter(x=[1], y=[1])]).write_image('/tmp/kaleido-warmup.png')"
+RUN python -c "import plotly.graph_objects as go; go.Figure(data=[go.Scatter(x=[1], y=[1])]).write_image('/tmp/kaleido-warmup.png')" \
+    || echo "kaleido warmup skipped during build"
 USER root
 
 EXPOSE 8000
