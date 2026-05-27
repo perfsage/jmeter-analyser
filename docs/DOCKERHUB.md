@@ -27,7 +27,7 @@ docker run -d \
   -p 8000:8000 \
   -v perfsage-reveal-data:/app/data \
   -e PERFSAGE_SECRET="your-32-char-random-secret-here" \
-  perfsage/reveal:latest
+  aashu3201/reveal:latest
 ```
 
 Open **http://localhost:8000** → upload a `.jtl` / `.csv` / `.xml` file → explore charts → export HTML or PDF.

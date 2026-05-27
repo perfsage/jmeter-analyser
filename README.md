@@ -6,12 +6,12 @@
 
 **Generating value in performance analysis** — upload JMeter results, get expert charts, SLO insights, AI narratives, and shareable HTML/PDF reports.
 
-[![Docker Hub](https://img.shields.io/docker/v/perfsage/reveal?label=Docker%20Hub&logo=docker&color=2496ED)](https://hub.docker.com/r/perfsage/reveal)
+[![Docker Hub](https://img.shields.io/docker/v/aashu3201/reveal?label=Docker%20Hub&logo=docker&color=2496ED)](https://hub.docker.com/r/aashu3201/reveal)
 [![Version](https://img.shields.io/badge/version-0.1.1-D4A857)](VERSION)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-0B1F3A)](LICENSE)
 
-[🚀 Quick Start](#-installation) · [📊 Features](#-features) · [🐳 Docker Hub](https://hub.docker.com/r/perfsage/reveal) · [📦 Releases](https://github.com/perfsage/reveal/releases)
+[🚀 Quick Start](#-installation) · [📊 Features](#-features) · [🐳 Docker Hub](https://hub.docker.com/r/aashu3201/reveal) · [📦 Releases](https://github.com/perfsage/reveal/releases)
 
 </div>
 
@@ -54,14 +54,14 @@ Choose the path that fits your workflow:
 ### Option 1 — Docker Hub pull *(fastest)*
 
 ```bash
-docker pull perfsage/reveal:latest
+docker pull aashu3201/reveal:latest
 
 docker run -d \
   --name perfsage-reveal \
   -p 8000:8000 \
   -v perfsage-reveal-data:/app/data \
   -e PERFSAGE_SECRET="change-me-to-a-32-char-random-string" \
-  perfsage/reveal:latest
+  aashu3201/reveal:latest
 ```
 
 Open **http://localhost:8000** 🎉
@@ -94,7 +94,7 @@ docker compose build
 docker compose up -d
 ```
 
-Every push to `main` triggers a CI build → [Docker Hub](https://hub.docker.com/r/perfsage/reveal).
+Every push to `main` triggers a CI build → [Docker Hub](https://hub.docker.com/r/aashu3201/reveal).
 
 ---
 
@@ -198,7 +198,7 @@ Versions are tracked in-repo:
 # 1. Bump VERSION + CHANGELOG.md
 # 2. Commit and tag
 git tag v0.1.1 && git push origin main --tags
-# 3. GitHub Actions builds & pushes perfsage/reveal:0.1.1 + :latest
+# 3. GitHub Actions builds & pushes aashu3201/reveal:0.1.1 + :latest
 ```
 
 ---
@@ -238,6 +238,6 @@ MIT — see [LICENSE](LICENSE).
 
 **Built by [PerfSage](https://github.com/perfsage)** · *Generating value in performance analysis* ✨
 
-[Docker Hub](https://hub.docker.com/r/perfsage/reveal) · [GitHub](https://github.com/perfsage/reveal) · [Report an issue](https://github.com/perfsage/reveal/issues)
+[Docker Hub](https://hub.docker.com/r/aashu3201/reveal) · [GitHub](https://github.com/perfsage/reveal) · [Report an issue](https://github.com/perfsage/reveal/issues)
 
 </div>

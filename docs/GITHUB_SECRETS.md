@@ -13,7 +13,7 @@ Add these under **Settings → Secrets and variables → Actions** in [perfsage/
 
 | Event | CI | Docker Publish |
 |-------|-----|----------------|
-| Push to `main` | Ruff, mypy, pytest | Builds multi-arch image → `perfsage/reveal:latest`, `:0.1.1`, `:sha-…` |
+| Push to `main` | Ruff, mypy, pytest | Builds multi-arch image → `aashu3201/reveal:latest`, `:0.1.1`, `:sha-…` |
 | Tag `v*` | Same | Also pushes semver tag (e.g. `:0.1.1`) |
 | Pull request | CI only | — |
 

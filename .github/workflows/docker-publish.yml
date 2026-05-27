@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE_NAME: perfsage/reveal
+  IMAGE_NAME: aashu3201/reveal
 
 jobs:
   build-and-push:
@@ -64,5 +64,5 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: perfsage/reveal
+          repository: aashu3201/reveal
           readme-filepath: ./docs/DOCKERHUB.md
