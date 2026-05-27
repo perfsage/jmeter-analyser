@@ -14,7 +14,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -e ".[test]"
+        run: pip install -e ".[test]" ruff mypy
 
       - name: Lint (ruff check)
         run: ruff check .
