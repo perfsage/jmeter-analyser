@@ -46,9 +46,7 @@ class ReportRepo:
         return int(result)
 
     def count_by_status(self) -> dict[ReportStatus, int]:
-        rows = self._s.exec(
-            select(Report.status, func.count()).group_by(Report.status)
-        ).all()
+        rows = self._s.exec(select(Report.status, func.count()).group_by(Report.status)).all()
         return {ReportStatus(status): int(cnt) for status, cnt in rows}
 
     def update_status(self, report_id: str, status: ReportStatus) -> None:
