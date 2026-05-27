@@ -1,13 +1,18 @@
 """AI insights API endpoints."""
 
-import logging
+from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+import logging
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 from perfsage.config import Settings, get_settings
 from perfsage.core.ai._crypto import decrypt_key
 from perfsage.core.ai.client import get_client
+from perfsage.core.ai.markdown_render import render_ai_markdown
 from perfsage.core.ai.prompts import SYSTEM_PROMPT, build_analysis_prompt
 from perfsage.core.storage.db import InsightSeverity, get_engine, get_session
 from perfsage.core.storage.files import FileStore
@@ -16,35 +21,49 @@ from perfsage.core.storage.repos import AppSettingsRepo, InsightRepo, ReportRepo
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+_templates = Jinja2Templates(
+    directory=str(Path(__file__).parent.parent / "web" / "templates")
+)
+
+
+def _render_ai_html(request: Request, narrative: str) -> HTMLResponse:
+    return _templates.TemplateResponse(
+        request,
+        "partials/ai_insights.html",
+        {
+            "ai_html": render_ai_markdown(narrative),
+            "ai_raw": narrative,
+        },
+    )
 
 
 @router.post("/{report_id}/generate", response_class=HTMLResponse)
 async def generate_ai_insights(
     report_id: str,
+    request: Request,
     settings: Settings = Depends(get_settings),
-) -> str:
-    """Generate AI insights for a report.
-
-    Returns HTML fragment (for HTMX swap).
-    Caches result in Insight table (kind='ai_narrative').
-    """
+) -> HTMLResponse:
+    """Generate AI insights for a report. Returns HTML fragment (HTMX swap)."""
     engine = get_engine(settings.database_url)
     file_store = FileStore(settings.data_dir)
 
     with get_session(engine) as session:
         report = ReportRepo(session).get(report_id)
         if not report:
-            return '<div style="color:#E53E3E">Report not found.</div>'
+            return HTMLResponse(
+                '<div style="color:#E53E3E">Report not found.</div>', status_code=404
+            )
 
         existing = next(
-            (i for i in InsightRepo(session).list_for_report(report_id) if i.kind == "ai_narrative"),
+            (
+                i
+                for i in InsightRepo(session).list_for_report(report_id)
+                if i.kind == "ai_narrative"
+            ),
             None,
         )
         if existing:
-            return (
-                f'<div style="white-space:pre-wrap;font-size:0.9375rem;line-height:1.6">'
-                f"{existing.message}</div>"
-            )
+            return _render_ai_html(request, existing.message)
 
         settings_repo = AppSettingsRepo(session)
         provider: str | None = None
@@ -57,23 +76,22 @@ async def generate_ai_insights(
                 break
 
     if not provider or not api_key:
-        return (
+        return HTMLResponse(
             '<div style="color:#E53E3E">No AI provider configured. '
             'Go to <a href="/settings">Settings</a> to add an API key.</div>'
         )
 
     samples_path = file_store.samples_parquet(report_id)
     if not samples_path.exists():
-        return (
+        return HTMLResponse(
             '<div style="color:#E53E3E">Report data not found. '
             "Re-upload the file to regenerate.</div>"
         )
 
     user_prompt = build_analysis_prompt(samples_path)
     if not user_prompt.strip():
-        return (
-            '<div style="color:#E53E3E">Could not extract metrics from report data. '
-            "Ensure the report has been fully analysed.</div>"
+        return HTMLResponse(
+            '<div style="color:#E53E3E">Could not extract metrics from report data.</div>'
         )
 
     try:
@@ -85,15 +103,14 @@ async def generate_ai_insights(
             timeout_seconds=90.0,
         )
     except TimeoutError:
-        return (
-            '<div style="color:#E53E3E">AI analysis timed out (90s). '
-            "Try again or use a different provider.</div>"
+        return HTMLResponse(
+            '<div style="color:#E53E3E">AI analysis timed out (90s). Try again.</div>'
         )
     except Exception:
         logger.exception("AI analysis failed for report %s", report_id)
-        return (
-            '<div style="color:#E53E3E">AI analysis failed. Check your API key and provider '
-            'configuration in <a href="/settings">Settings</a>.</div>'
+        return HTMLResponse(
+            '<div style="color:#E53E3E">AI analysis failed. Check API key in '
+            '<a href="/settings">Settings</a>.</div>'
         )
 
     with get_session(engine) as session:
@@ -105,7 +122,4 @@ async def generate_ai_insights(
         )
         ReportRepo(session).update_stats(report_id, has_ai_insights=True)
 
-    return (
-        f'<div style="white-space:pre-wrap;font-size:0.9375rem;line-height:1.6">'
-        f"{narrative}</div>"
-    )
+    return _render_ai_html(request, narrative)

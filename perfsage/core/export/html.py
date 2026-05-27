@@ -2,46 +2,35 @@
 
 from __future__ import annotations
 
+import base64
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
-
-import plotly.graph_objects as go
 
 from perfsage.core.analysis.metrics import compute_label_summary
 from perfsage.core.analysis.percentiles import compute_overall_percentiles
 from perfsage.core.analysis.recommendations import run_all_recommendations
 from perfsage.core.analysis.slo import SLOConfig
 from perfsage.core.storage.db import InsightSeverity
+from perfsage.core.viz.registry import EXPORT_FIGURES, build_figure_objects
 
 logger = logging.getLogger(__name__)
 
-PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.30.0.min.js"
+_PLOTLY_JS_PATH = Path(__file__).parent.parent.parent / "web" / "static" / "js" / "plotly.min.js"
+_LOGO_PATH = Path(__file__).parent.parent.parent / "web" / "static" / "img" / "perfsage-logo.png"
 
-_CSS_PATH = Path(__file__).parent.parent.parent / "web" / "static" / "css" / "perfsage.css"
-
-_FIGURES: list[tuple[str, str]] = [
-    ("fig-rt-time", "Response Time Over Time"),
-    ("fig-throughput-time", "Throughput Over Time"),
-    ("fig-errors-time", "Errors Over Time"),
-    ("fig-threads-rt", "Active Threads vs Response Time"),
-    ("fig-bytes-time", "Bytes Over Time"),
-    ("fig-latency-components", "Latency Components"),
-    ("fig-label-multiples", "Per-Label Small Multiples"),
-    ("fig-boxplots", "Boxplots per Label"),
-    ("fig-rt-heatmap", "Response Time Heatmap"),
-    ("fig-histogram", "Latency Histogram"),
-    ("fig-cdf", "Latency CDF"),
-    ("fig-rt-throughput", "RT vs Throughput"),
-    ("fig-rt-concurrency", "RT vs Concurrency"),
-    ("fig-rt-status", "RT by Status"),
-    ("fig-correlation", "Correlation Matrix"),
-    ("fig-slo-gauges", "SLO KPI Gauges"),
-    ("fig-apdex", "Apdex by Label"),
-    ("fig-error-sunburst", "Error Sunburst"),
-    ("fig-slowest", "Slowest Transactions"),
-    ("fig-variability", "Variability Chart"),
-]
+_EXPORT_CSS = """
+:root { --navy: #0B1F3A; --cream: #F6F1E7; --amber: #D4A857; --white: #FFFFFF; }
+body { background: var(--cream); color: var(--navy); font-family: Inter, Arial, sans-serif; margin: 0; }
+.navbar { background: var(--navy); padding: 1rem 2rem; color: var(--cream); }
+.card { background: var(--white); border-radius: 8px; box-shadow: 0 1px 3px rgba(11,31,58,0.12); padding: 1.5rem; margin-bottom: 1.5rem; }
+table.data-table { width: 100%; border-collapse: collapse; }
+table.data-table th { background: var(--navy); color: var(--cream); padding: 0.75rem 1rem; text-align: left; }
+table.data-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #E2E8F0; }
+.export-footer { background: #0B1F3A; color: #F6F1E7; text-align: center; padding: 1.5rem; margin-top: 2rem; font-size: 0.875rem; }
+.export-footer a { color: #D4A857; text-decoration: none; font-weight: 600; }
+.export-footer img { height: 28px; vertical-align: middle; margin-right: 0.5rem; }
+"""
 
 _SEVERITY_CSS: dict[InsightSeverity, str] = {
     InsightSeverity.CRITICAL: "background:#FED7D7;color:#742A2A;border-left:4px solid #E53E3E",
@@ -50,66 +39,13 @@ _SEVERITY_CSS: dict[InsightSeverity, str] = {
 }
 
 
-def _build_figures(samples_path: Path, slo_config: SLOConfig | None) -> list[go.Figure | None]:
-    """Build all 20 figures; return None for any that fail."""
-    from perfsage.core.viz.decomposition import (
-        fig_latency_components,
-        fig_per_label_small_multiples,
-    )
-    from perfsage.core.viz.distribution import (
-        fig_boxplots_per_label,
-        fig_latency_cdf,
-        fig_latency_histogram,
-        fig_rt_heatmap,
-    )
-    from perfsage.core.viz.scatter import (
-        fig_correlation_matrix,
-        fig_rt_vs_concurrency,
-        fig_rt_vs_throughput,
-        fig_rt_vs_time_by_status,
-    )
-    from perfsage.core.viz.slo import fig_apdex_by_label, fig_error_sunburst, fig_slo_gauges
-    from perfsage.core.viz.tables import fig_slowest_transactions, fig_variability_chart
-    from perfsage.core.viz.timeseries import (
-        fig_bytes_over_time,
-        fig_errors_over_time,
-        fig_rt_over_time,
-        fig_threads_vs_rt,
-        fig_throughput_over_time,
-    )
-
-    builders = [
-        lambda: fig_rt_over_time(samples_path),
-        lambda: fig_throughput_over_time(samples_path),
-        lambda: fig_errors_over_time(samples_path),
-        lambda: fig_threads_vs_rt(samples_path),
-        lambda: fig_bytes_over_time(samples_path),
-        lambda: fig_latency_components(samples_path),
-        lambda: fig_per_label_small_multiples(samples_path),
-        lambda: fig_boxplots_per_label(samples_path),
-        lambda: fig_rt_heatmap(samples_path),
-        lambda: fig_latency_histogram(samples_path),
-        lambda: fig_latency_cdf(samples_path),
-        lambda: fig_rt_vs_throughput(samples_path),
-        lambda: fig_rt_vs_concurrency(samples_path),
-        lambda: fig_rt_vs_time_by_status(samples_path),
-        lambda: fig_correlation_matrix(samples_path),
-        lambda: fig_slo_gauges(samples_path, slo_config),
-        lambda: fig_apdex_by_label(samples_path),
-        lambda: fig_error_sunburst(samples_path),
-        lambda: fig_slowest_transactions(samples_path),
-        lambda: fig_variability_chart(samples_path),
-    ]
-
-    results: list[go.Figure | None] = []
-    for i, builder in enumerate(builders):
-        try:
-            results.append(builder())  # type: ignore[no-untyped-call]
-        except Exception as exc:
-            fig_id = _FIGURES[i][0]
-            logger.warning("Failed to build figure %s: %s", fig_id, exc)
-            results.append(None)
-    return results
+def _logo_data_uri() -> str:
+    try:
+        raw = _LOGO_PATH.read_bytes()
+        b64 = base64.b64encode(raw).decode("ascii")
+        return f"data:image/png;base64,{b64}"
+    except Exception:
+        return ""
 
 
 def _render_summary_table(samples_path: Path) -> str:
@@ -159,7 +95,10 @@ def _render_overall_stats(samples_path: Path) -> str:
             f"</div>"
             for k, v in stats.items()
         )
-        return f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1rem;margin-bottom:2rem">{items}</div>'
+        return (
+            f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));'
+            f'gap:1rem;margin-bottom:2rem">{items}</div>'
+        )
     except Exception as exc:
         logger.warning("Failed to build overall stats: %s", exc)
         return ""
@@ -169,7 +108,9 @@ def _render_recommendations(samples_path: Path, slo_config: SLOConfig | None) ->
     try:
         recs = run_all_recommendations(samples_path, slo_config)
         if not recs:
-            return '<div class="card"><p style="color:#38A169">&#10003; No issues detected.</p></div>'
+            return (
+                '<div class="card"><p style="color:#38A169">&#10003; No issues detected.</p></div>'
+            )
 
         items = ""
         for rec in recs:
@@ -177,7 +118,7 @@ def _render_recommendations(samples_path: Path, slo_config: SLOConfig | None) ->
             badge = rec.severity.upper()
             items += (
                 f'<div style="{style};padding:0.75rem 1rem;border-radius:4px;margin-bottom:0.5rem">'
-                f'<strong>[{badge}]</strong> {rec.message}'
+                f"<strong>[{badge}]</strong> {rec.message}"
                 f"</div>"
             )
         return f'<div class="card"><h3 style="margin-top:0">Recommendations</h3>{items}</div>'
@@ -186,37 +127,48 @@ def _render_recommendations(samples_path: Path, slo_config: SLOConfig | None) ->
         return ""
 
 
+def _render_export_footer(timestamp: str) -> str:
+    logo = _logo_data_uri()
+    logo_html = f'<img src="{logo}" alt="PerfSage">' if logo else ""
+    return (
+        f'<div class="export-footer">'
+        f"Powered by {logo_html}"
+        f'<a href="https://perfsage.com">PerfSage</a> &mdash; {timestamp}'
+        f"</div>"
+    )
+
+
 def generate_html_report(
     samples_path: Path,
     report_name: str,
     output_path: Path,
     slo_config: SLOConfig | None = None,
 ) -> Path:
-    """Generate a complete standalone HTML report.
-
-    Embeds Plotly JS from CDN (link, not inline — keeps file small),
-    embeds all 20 charts as JSON (Plotly.newPlot calls in <script>),
-    includes brand CSS inline, recommendations, and summary stats.
-    Returns output_path.
-    """
+    """Generate a complete standalone HTML report with embedded Plotly."""
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
-    css_content = ""
+    plotly_js = ""
     try:
-        css_content = _CSS_PATH.read_text()
+        plotly_js = _PLOTLY_JS_PATH.read_text()
     except Exception as exc:
-        logger.warning("Could not load CSS: %s", exc)
+        logger.warning("Could not load Plotly JS: %s", exc)
 
     data_available = samples_path.exists()
+    figure_objs = (
+        build_figure_objects(samples_path, slo_config)
+        if data_available
+        else {fid: None for fid, _ in EXPORT_FIGURES}
+    )
 
-    figures = _build_figures(samples_path, slo_config) if data_available else [None] * 20
     overall_stats = _render_overall_stats(samples_path) if data_available else ""
     summary_table = _render_summary_table(samples_path) if data_available else ""
-    recommendations_html = _render_recommendations(samples_path, slo_config) if data_available else ""
+    recommendations_html = (
+        _render_recommendations(samples_path, slo_config) if data_available else ""
+    )
+    footer_html = _render_export_footer(timestamp)
 
-    # Build chart divs
     chart_divs = ""
-    for _i, (fig_id, fig_title) in enumerate(_FIGURES):
+    for fig_id, fig_title in EXPORT_FIGURES:
         chart_divs += (
             f'<div class="card" style="margin-bottom:1.5rem">'
             f'<h3 style="margin-top:0;font-size:1rem;color:#64748B">{fig_title}</h3>'
@@ -224,10 +176,9 @@ def generate_html_report(
             f"</div>"
         )
 
-    # Build Plotly.newPlot calls
     plot_scripts = ""
-    for i, (fig_id, _) in enumerate(_FIGURES):
-        fig = figures[i] if i < len(figures) else None
+    for fig_id, _ in EXPORT_FIGURES:
+        fig = figure_objs.get(fig_id)
         if fig is not None:
             try:
                 fig_json = fig.to_json()
@@ -239,9 +190,6 @@ def generate_html_report(
                 )
             except Exception as exc:
                 logger.warning("Failed to serialize figure %s: %s", fig_id, exc)
-                plot_scripts += f"// Figure '{fig_id}' failed to render.\n"
-        else:
-            plot_scripts += f"// Figure '{fig_id}' not available.\n"
 
     not_available_banner = (
         '<div style="background:#FEF3C7;padding:1rem;border-radius:4px;margin-bottom:1rem">'
@@ -257,22 +205,20 @@ def generate_html_report(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{report_name} \u2014 PerfSage Analysis</title>
-  <script src="{PLOTLY_CDN}"></script>
   <style>
-{css_content}
+{_EXPORT_CSS}
   </style>
 </head>
 <body>
   <nav class="navbar">
-    <div class="brand">PerfSage Analyser</div>
-    <span style="color:#F6F1E7;margin-left:auto;font-size:0.875rem">Generated {timestamp}</span>
+    <div>PerfSage Analyser</div>
+    <span style="margin-left:auto;font-size:0.875rem">Generated {timestamp}</span>
   </nav>
   <main style="max-width:1280px;margin:0 auto;padding:2rem">
     <h1 style="color:#0B1F3A;margin-bottom:0.5rem">{report_name}</h1>
-    <p style="color:#64748B;margin-bottom:2rem;font-size:0.875rem">Performance Analysis Report &mdash; PerfSage</p>
+    <p style="color:#64748B;margin-bottom:2rem;font-size:0.875rem">Performance Analysis Report</p>
 
     {not_available_banner}
-
     {overall_stats}
 
     <div class="card" style="margin-bottom:1.5rem">
@@ -285,9 +231,10 @@ def generate_html_report(
     <h2 style="color:#0B1F3A;margin-top:2rem;margin-bottom:1rem">Charts</h2>
     {chart_divs}
   </main>
-  <footer style="text-align:center;padding:2rem;color:#64748B;font-size:0.75rem;border-top:1px solid #E2E8F0;margin-top:2rem">
-    Powered by <a href="https://perfsage.com" style="color:#0B1F3A">PerfSage</a>
-  </footer>
+  {footer_html}
+  <script>
+{plotly_js}
+  </script>
   <script>
 {plot_scripts}
   </script>

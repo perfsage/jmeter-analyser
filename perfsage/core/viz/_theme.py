@@ -12,6 +12,27 @@ ERROR_RED = "#E53E3E"
 SUCCESS_GREEN = "#38A169"
 WARN_YELLOW = "#ECC94B"
 
+# Colorblind-safe palette for per-label series (~Okabe–Ito + brand colors)
+LABEL_COLORS = [
+    NAVY,
+    AMBER,
+    SUCCESS_GREEN,
+    ERROR_RED,
+    "#0072B2",
+    "#E69F00",
+    "#009E73",
+    "#CC79A7",
+    "#56B4E9",
+    "#D55E00",
+]
+
+# Extended colorblind-safe palette for stacked/multi-series expert charts
+LABEL_PALETTE = [
+    *LABEL_COLORS,
+    "#718096",
+    "#4A5568",
+]
+
 
 def apply_theme(fig: go.Figure, title: str = "") -> go.Figure:
     """Apply PerfSage brand theme to a Plotly figure."""

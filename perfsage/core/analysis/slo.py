@@ -108,8 +108,7 @@ def compute_slo_compliance(
 
         apdex_df = compute_apdex(tmp_path, t_seconds=config.apdex_t)
         apdex_map: dict[str, float] = {
-            str(row["label"]): float(row["apdex_score"])
-            for row in apdex_df.to_dicts()
+            str(row["label"]): float(row["apdex_score"]) for row in apdex_df.to_dicts()
         }
 
         results: list[SLOResult] = []

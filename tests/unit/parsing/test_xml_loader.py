@@ -93,7 +93,7 @@ def test_xml_idle_time_mapped(tmp_path: Path) -> None:
         '  <sample ts="1700000001000" t="150" lb="API" rc="200" rm="OK"'
         ' tn="t1" s="true" by="512" sby="128" ng="1" na="1"'
         ' lt="60" ct="5" it="456"/>\n'
-        '</testResults>\n'
+        "</testResults>\n"
     )
     src = _write(tmp_path, xml_content)
     dest = tmp_path / "out.parquet"

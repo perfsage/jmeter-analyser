@@ -18,7 +18,11 @@ def test_recommendation_fields(sample_parquet: Path) -> None:
         assert isinstance(r, Recommendation)
         assert isinstance(r.kind, str)
         assert isinstance(r.message, str)
-        assert r.severity in (InsightSeverity.INFO, InsightSeverity.WARNING, InsightSeverity.CRITICAL)
+        assert r.severity in (
+            InsightSeverity.INFO,
+            InsightSeverity.WARNING,
+            InsightSeverity.CRITICAL,
+        )
 
 
 def test_recommendations_sorted_by_severity(sample_parquet: Path) -> None:

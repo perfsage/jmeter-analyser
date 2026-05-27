@@ -19,6 +19,7 @@ from perfsage.api import settings as settings_router
 from perfsage.config import Settings, get_settings
 from perfsage.core.storage.db import JobStatus, get_engine, get_session
 from perfsage.core.storage.repos import JobRepo
+from perfsage._version import __version__
 from perfsage.web.views import router as web_router
 
 
@@ -73,6 +74,10 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     logger = logging.getLogger(__name__)
     logger.info("PerfSage starting up", extra={"debug": cfg.debug})
 
+    from perfsage.core.export.pdf import _ensure_kaleido_browser
+
+    _ensure_kaleido_browser()
+
     # Ensure data subdirectories exist.
     for sub in ("uploads", "exports", "cache", "parquet"):
         (cfg.data_dir / sub).mkdir(parents=True, exist_ok=True)
@@ -123,7 +128,7 @@ def create_app() -> FastAPI:
     """Construct and return the FastAPI application."""
     application = FastAPI(
         title="PerfSage JMeter Analyser",
-        version="0.1.0",
+        version=__version__,
         lifespan=lifespan,
     )
 
@@ -154,7 +159,7 @@ def create_app() -> FastAPI:
     async def healthz(cfg: Settings = Depends(get_settings)) -> dict[str, str]:  # noqa: B008
         return {
             "status": "ok",
-            "version": "0.1.0",
+            "version": __version__,
             "data_dir": str(cfg.data_dir),
         }
 

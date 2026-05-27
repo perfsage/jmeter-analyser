@@ -32,21 +32,15 @@ def detect_rt_spikes(
         ).pl()
 
     if df.is_empty() or df.shape[0] < 2:
-        return df.with_columns(
-            [pl.lit(0.0).alias("z_score"), pl.lit(False).alias("is_anomaly")]
-        )
+        return df.with_columns([pl.lit(0.0).alias("z_score"), pl.lit(False).alias("is_anomaly")])
 
     mean = df["p95"].mean()
     std = df["p95"].std()
 
     if mean is None or std is None or std == 0.0:
-        return df.with_columns(
-            [pl.lit(0.0).alias("z_score"), pl.lit(False).alias("is_anomaly")]
-        )
+        return df.with_columns([pl.lit(0.0).alias("z_score"), pl.lit(False).alias("is_anomaly")])
 
-    return df.with_columns(
-        [((pl.col("p95") - mean) / std).alias("z_score")]
-    ).with_columns(
+    return df.with_columns([((pl.col("p95") - mean) / std).alias("z_score")]).with_columns(
         [(pl.col("z_score").abs() > z_threshold).alias("is_anomaly")]
     )
 

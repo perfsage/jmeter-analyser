@@ -28,9 +28,7 @@ def test_map_columns_renames_jmeter_variants() -> None:
 
 
 def test_map_columns_drops_unknown_columns() -> None:
-    df = pl.DataFrame(
-        {"timeStamp": ["1700000000000"], "dataType": ["text"], "unknown_col": ["x"]}
-    )
+    df = pl.DataFrame({"timeStamp": ["1700000000000"], "dataType": ["text"], "unknown_col": ["x"]})
     result = map_columns(df)
     assert "unknown_col" not in result.columns
     assert "dataType" not in result.columns  # dataType has no canonical mapping

@@ -26,9 +26,7 @@ class QuarantinedRow:
 # ─── quarantine writer ───────────────────────────────────────────────────────
 
 
-def write_quarantine_parquet(
-    quarantined: list[QuarantinedRow], dest: Path
-) -> None:
+def write_quarantine_parquet(quarantined: list[QuarantinedRow], dest: Path) -> None:
     """Write quarantined rows to a Parquet file.
 
     Always creates the file (even when the list is empty) so downstream
@@ -154,9 +152,7 @@ def clean_dataframe(
     # ── timestamp_ms ──────────────────────────────────────────────────────
     if "timestamp_ms" in indexed.columns:
         # Preserve the raw string so quarantine reasons can show the bad value.
-        indexed = indexed.with_columns(
-            pl.col("timestamp_ms").alias("_raw_ts_str")
-        )
+        indexed = indexed.with_columns(pl.col("timestamp_ms").alias("_raw_ts_str"))
 
         def _ts(v: Any) -> int | None:
             if v is None:
@@ -222,11 +218,7 @@ def clean_dataframe(
                     reasons.append(f"unparseable timestamp: {repr(raw_ts)}")
             if not reasons:
                 reasons.append("invalid row")
-            raw = {
-                k: v
-                for k, v in row.items()
-                if k not in ("_row_idx", "_raw_ts_str")
-            }
+            raw = {k: v for k, v in row.items() if k not in ("_row_idx", "_raw_ts_str")}
             quarantined.append(
                 QuarantinedRow(row_index=row_idx, raw=raw, reason="; ".join(reasons))
             )
@@ -239,7 +231,15 @@ def clean_dataframe(
     clean = good_df.drop(drop_cols)
 
     # ── cast remaining numeric columns ────────────────────────────────────
-    int64_cols = ["bytes", "sent_bytes", "grp_threads", "all_threads", "latency", "idle_time", "connect"]
+    int64_cols = [
+        "bytes",
+        "sent_bytes",
+        "grp_threads",
+        "all_threads",
+        "latency",
+        "idle_time",
+        "connect",
+    ]
     for col in int64_cols:
         if col in clean.columns:
             clean = clean.with_columns(pl.col(col).cast(pl.Int64, strict=False))

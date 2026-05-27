@@ -186,9 +186,7 @@ def fig_rt_heatmap(samples_path: Path, bucket_seconds: int = 30) -> go.Figure:
     for rt_lbl in rt_labels_present:
         row: list[int] = []
         for t in times_sorted:
-            sub = counts.filter(
-                (pl.col("time_bucket") == t) & (pl.col("rt_bucket") == rt_lbl)
-            )
+            sub = counts.filter((pl.col("time_bucket") == t) & (pl.col("rt_bucket") == rt_lbl))
             row.append(int(sub["count"].sum()))
         z.append(row)
 

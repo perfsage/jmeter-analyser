@@ -1,4 +1,5 @@
 """Tests for warmup/steady-state segmentation."""
+
 from pathlib import Path
 
 import polars as pl

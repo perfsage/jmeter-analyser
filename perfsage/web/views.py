@@ -12,9 +12,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from perfsage.config import Settings, get_settings
+from perfsage.core.ai.markdown_render import render_ai_markdown
 from perfsage.core.analysis.slo import SLOConfig
 from perfsage.core.storage.db import ReportStatus, get_engine, get_session
 from perfsage.core.storage.repos import AppSettingsRepo, InsightRepo, ReportRepo
+from perfsage.core.viz.registry import build_figures_json
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,6 @@ def reports_list_context(
     page: int = 1,
     per_page: int = 25,
 ) -> dict[str, Any]:
-    """Build template context for paginated reports list."""
     page = max(1, page)
     per_page = min(max(1, per_page), 100)
     offset = (page - 1) * per_page
@@ -110,25 +111,27 @@ async def report_detail(
         )
 
     samples_path = file_store.samples_parquet(report_id)
+    slo_config = SLOConfig()
     figures_json: dict[str, Any] = {}
     recommendations: list[Any] = []
     summary_stats: list[dict[str, str]] = []
-    slo_config = SLOConfig()
 
     if samples_path.exists() and report.status == ReportStatus.READY:
-        figures_json = _build_figures(samples_path, slo_config)
+        figures_json = build_figures_json(samples_path, slo_config)
         try:
             from perfsage.core.analysis.recommendations import run_all_recommendations
 
             recommendations = run_all_recommendations(samples_path, slo_config)
         except Exception:
             logger.warning("Recommendations failed for report %s", report_id, exc_info=True)
-        summary_stats = _build_summary_stats(report, samples_path)
+        summary_stats = _build_summary_stats(report, samples_path, slo_config)
 
-    ai_insights: str | None = None
+    ai_insights_html: str | None = None
+    ai_insights_raw: str | None = None
     ai_insight_obj = next((i for i in insights if i.kind == "ai_narrative"), None)
     if ai_insight_obj is not None:
-        ai_insights = ai_insight_obj.message
+        ai_insights_raw = ai_insight_obj.message
+        ai_insights_html = render_ai_markdown(ai_insight_obj.message)
 
     return templates.TemplateResponse(
         request,
@@ -138,7 +141,8 @@ async def report_detail(
             "figures_json": json.dumps(figures_json),
             "recommendations": recommendations,
             "summary_stats": summary_stats,
-            "ai_insights": ai_insights,
+            "ai_insights_html": ai_insights_html,
+            "ai_insights_raw": ai_insights_raw,
             "ai_key_configured": ai_key_configured,
         },
     )
@@ -168,79 +172,13 @@ async def settings_page(
     )
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _safe_fig(fn: Any, *args: Any, **kwargs: Any) -> Any:
-    """Call a viz builder; return Plotly JSON dict or None on any error."""
-    try:
-        return json.loads(fn(*args, **kwargs).to_json())
-    except Exception:
-        logger.debug("Figure builder %s failed", getattr(fn, "__name__", fn), exc_info=True)
-        return None
-
-
-def _build_figures(samples_path: Path, slo_config: SLOConfig) -> dict[str, Any]:
-    from perfsage.core.viz.decomposition import (
-        fig_latency_components,
-        fig_per_label_small_multiples,
-    )
-    from perfsage.core.viz.distribution import (
-        fig_boxplots_per_label,
-        fig_latency_cdf,
-        fig_latency_histogram,
-        fig_rt_heatmap,
-    )
-    from perfsage.core.viz.scatter import (
-        fig_correlation_matrix,
-        fig_rt_vs_concurrency,
-        fig_rt_vs_throughput,
-        fig_rt_vs_time_by_status,
-    )
-    from perfsage.core.viz.slo import (
-        fig_apdex_by_label,
-        fig_error_sunburst,
-        fig_slo_gauges,
-    )
-    from perfsage.core.viz.tables import fig_slowest_transactions, fig_variability_chart
-    from perfsage.core.viz.timeseries import (
-        fig_bytes_over_time,
-        fig_errors_over_time,
-        fig_rt_over_time,
-        fig_threads_vs_rt,
-        fig_throughput_over_time,
-    )
-
-    return {
-        "fig-rt-time": _safe_fig(fig_rt_over_time, samples_path),
-        "fig-throughput": _safe_fig(fig_throughput_over_time, samples_path),
-        "fig-errors": _safe_fig(fig_errors_over_time, samples_path),
-        "fig-threads": _safe_fig(fig_threads_vs_rt, samples_path),
-        "fig-bytes": _safe_fig(fig_bytes_over_time, samples_path),
-        "fig-histogram": _safe_fig(fig_latency_histogram, samples_path),
-        "fig-cdf": _safe_fig(fig_latency_cdf, samples_path),
-        "fig-boxplots": _safe_fig(fig_boxplots_per_label, samples_path),
-        "fig-heatmap": _safe_fig(fig_rt_heatmap, samples_path),
-        "fig-rt-throughput": _safe_fig(fig_rt_vs_throughput, samples_path),
-        "fig-rt-concurrency": _safe_fig(fig_rt_vs_concurrency, samples_path),
-        "fig-rt-status": _safe_fig(fig_rt_vs_time_by_status, samples_path),
-        "fig-correlation": _safe_fig(fig_correlation_matrix, samples_path),
-        "fig-components": _safe_fig(fig_latency_components, samples_path),
-        "fig-multiples": _safe_fig(fig_per_label_small_multiples, samples_path),
-        "fig-slo-gauges": _safe_fig(fig_slo_gauges, samples_path, slo_config),
-        "fig-apdex": _safe_fig(fig_apdex_by_label, samples_path),
-        "fig-slowest": _safe_fig(fig_slowest_transactions, samples_path),
-        "fig-sunburst": _safe_fig(fig_error_sunburst, samples_path),
-        "fig-variability": _safe_fig(fig_variability_chart, samples_path),
-    }
-
-
-def _build_summary_stats(report: Any, samples_path: Path) -> list[dict[str, str]]:
+def _build_summary_stats(
+    report: Any, samples_path: Path, slo_config: SLOConfig
+) -> list[dict[str, str]]:
     try:
         from perfsage.core.analysis.metrics import compute_label_summary
         from perfsage.core.analysis.percentiles import compute_overall_percentiles
+        from perfsage.core.analysis.slo import compute_slo_compliance
 
         pcts = compute_overall_percentiles(samples_path)
         lsummary = compute_label_summary(samples_path)
@@ -249,12 +187,18 @@ def _build_summary_stats(report: Any, samples_path: Path) -> list[dict[str, str]
             raw_mean = lsummary["error_rate"].mean()
             if raw_mean is not None:
                 error_rate = float(str(raw_mean)) * 100
+
+        slo_results = compute_slo_compliance(samples_path, slo_config)
+        overall_ok = all(r.overall_compliant for r in slo_results) if slo_results else True
+        slo_label = "PASS" if overall_ok else "FAIL"
+
         return [
             {"label": "P50 (ms)", "value": f"{pcts.get('p50', 0):.0f}"},
             {"label": "P90 (ms)", "value": f"{pcts.get('p90', 0):.0f}"},
             {"label": "P99 (ms)", "value": f"{pcts.get('p99', 0):.0f}"},
             {"label": "Error Rate", "value": f"{error_rate:.1f}%"},
-            {"label": "Total Samples", "value": f"{report.parsed_row_count:,}"},
+            {"label": "SLO Status", "value": slo_label},
+            {"label": "Samples", "value": f"{report.parsed_row_count:,}"},
         ]
     except Exception:
         logger.warning("Summary stats failed", exc_info=True)

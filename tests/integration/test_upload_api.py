@@ -107,7 +107,9 @@ def test_job_not_found(client: TestClient) -> None:
     assert resp.status_code == 404
 
 
-def test_sse_endpoint_returns_event_stream(client: TestClient, _settings: Settings, tmp_path) -> None:  # type: ignore[type-arg]
+def test_sse_endpoint_returns_event_stream(
+    client: TestClient, _settings: Settings, tmp_path
+) -> None:  # type: ignore[type-arg]
     # Upload first to create a job.
     upload_resp = client.post(
         "/api/uploads/upload",

@@ -148,9 +148,9 @@ def load_xml_to_parquet(
             chunk_fields = [f for f in CANONICAL_SCHEMA if f.name in present_names]
             if chunk_fields:
                 partial_schema = pa.schema(chunk_fields)
-                arrow_table = arrow_table.select(
-                    [f.name for f in chunk_fields]
-                ).cast(partial_schema)
+                arrow_table = arrow_table.select([f.name for f in chunk_fields]).cast(
+                    partial_schema
+                )
 
             if writer is None:
                 writer = pq.ParquetWriter(dest_parquet, arrow_table.schema)  # type: ignore[no-untyped-call]
@@ -160,13 +160,9 @@ def load_xml_to_parquet(
                 # nulls so ParquetWriter never sees a schema mismatch.
                 for field in writer.schema:
                     if field.name not in arrow_table.schema.names:
-                        null_array = pa.array(
-                            [None] * len(arrow_table), type=field.type
-                        )
+                        null_array = pa.array([None] * len(arrow_table), type=field.type)
                         arrow_table = arrow_table.append_column(field, null_array)
-                arrow_table = arrow_table.select(
-                    [f.name for f in writer.schema]
-                )
+                arrow_table = arrow_table.select([f.name for f in writer.schema])
 
             writer.write_table(arrow_table)  # type: ignore[no-untyped-call]
     finally:

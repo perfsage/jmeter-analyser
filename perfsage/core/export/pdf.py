@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import logging
 import shutil
 import tempfile
@@ -10,31 +9,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from perfsage.core.analysis.slo import SLOConfig
+from perfsage.core.viz.registry import EXPORT_FIGURES, build_figure_objects
 
 logger = logging.getLogger(__name__)
-
-_FIGURES: list[tuple[str, str]] = [
-    ("fig-rt-time", "Response Time Over Time"),
-    ("fig-throughput-time", "Throughput Over Time"),
-    ("fig-errors-time", "Errors Over Time"),
-    ("fig-threads-rt", "Active Threads vs Response Time"),
-    ("fig-bytes-time", "Bytes Over Time"),
-    ("fig-latency-components", "Latency Components"),
-    ("fig-label-multiples", "Per-Label Small Multiples"),
-    ("fig-boxplots", "Boxplots per Label"),
-    ("fig-rt-heatmap", "Response Time Heatmap"),
-    ("fig-histogram", "Latency Histogram"),
-    ("fig-cdf", "Latency CDF"),
-    ("fig-rt-throughput", "RT vs Throughput"),
-    ("fig-rt-concurrency", "RT vs Concurrency"),
-    ("fig-rt-status", "RT by Status"),
-    ("fig-correlation", "Correlation Matrix"),
-    ("fig-slo-gauges", "SLO KPI Gauges"),
-    ("fig-apdex", "Apdex by Label"),
-    ("fig-error-sunburst", "Error Sunburst"),
-    ("fig-slowest", "Slowest Transactions"),
-    ("fig-variability", "Variability Chart"),
-]
 
 _PDF_CSS = """
 @page { size: A4; margin: 1.5cm 2cm; }
@@ -67,86 +44,47 @@ table.summary-table td { padding: 4px 6px; border-bottom: 1px solid #E2E8F0; }
 .kpi-card { border: 1px solid #E2E8F0; border-radius: 4px; padding: 8px 16px; min-width: 80px; text-align: center; }
 .kpi-value { font-size: 1.25rem; font-weight: bold; color: #0B1F3A; }
 .kpi-label { font-size: 8pt; color: #64748B; }
-footer { text-align: center; font-size: 8pt; color: #64748B; margin-top: 1cm; border-top: 1px solid #E2E8F0; padding-top: 6px; }
+.pdf-footer { text-align: center; font-size: 8pt; color: #64748B; margin-top: 1cm; border-top: 1px solid #E2E8F0; padding-top: 6px; }
 """
 
 
-def _build_figures(samples_path: Path, slo_config: SLOConfig | None) -> list[object]:
-    """Build all 20 figures (go.Figure objects); return None entries for failures."""
-    import plotly.graph_objects as go
+def _ensure_kaleido_browser() -> None:
+    """Configure kaleido/choreographer to use system Chromium (Docker + local)."""
+    import os
+    import shutil
 
-    from perfsage.core.viz.decomposition import (
-        fig_latency_components,
-        fig_per_label_small_multiples,
-    )
-    from perfsage.core.viz.distribution import (
-        fig_boxplots_per_label,
-        fig_latency_cdf,
-        fig_latency_histogram,
-        fig_rt_heatmap,
-    )
-    from perfsage.core.viz.scatter import (
-        fig_correlation_matrix,
-        fig_rt_vs_concurrency,
-        fig_rt_vs_throughput,
-        fig_rt_vs_time_by_status,
-    )
-    from perfsage.core.viz.slo import fig_apdex_by_label, fig_error_sunburst, fig_slo_gauges
-    from perfsage.core.viz.tables import fig_slowest_transactions, fig_variability_chart
-    from perfsage.core.viz.timeseries import (
-        fig_bytes_over_time,
-        fig_errors_over_time,
-        fig_rt_over_time,
-        fig_threads_vs_rt,
-        fig_throughput_over_time,
-    )
-
-    builders = [
-        lambda: fig_rt_over_time(samples_path),
-        lambda: fig_throughput_over_time(samples_path),
-        lambda: fig_errors_over_time(samples_path),
-        lambda: fig_threads_vs_rt(samples_path),
-        lambda: fig_bytes_over_time(samples_path),
-        lambda: fig_latency_components(samples_path),
-        lambda: fig_per_label_small_multiples(samples_path),
-        lambda: fig_boxplots_per_label(samples_path),
-        lambda: fig_rt_heatmap(samples_path),
-        lambda: fig_latency_histogram(samples_path),
-        lambda: fig_latency_cdf(samples_path),
-        lambda: fig_rt_vs_throughput(samples_path),
-        lambda: fig_rt_vs_concurrency(samples_path),
-        lambda: fig_rt_vs_time_by_status(samples_path),
-        lambda: fig_correlation_matrix(samples_path),
-        lambda: fig_slo_gauges(samples_path, slo_config),
-        lambda: fig_apdex_by_label(samples_path),
-        lambda: fig_error_sunburst(samples_path),
-        lambda: fig_slowest_transactions(samples_path),
-        lambda: fig_variability_chart(samples_path),
+    candidates = [
+        os.environ.get("BROWSER_PATH"),
+        os.environ.get("CHROME_PATH"),
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
     ]
-
-    results: list[go.Figure | None] = []
-    for i, builder in enumerate(builders):
-        try:
-            results.append(builder())  # type: ignore[no-untyped-call]
-        except Exception as exc:
-            logger.warning("PDF: failed to build figure %s: %s", _FIGURES[i][0], exc)
-            results.append(None)
-    return results
+    browser = next((p for p in candidates if p and Path(p).is_file()), None)
+    if browser is None:
+        browser = shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("google-chrome")
+    if browser:
+        os.environ["BROWSER_PATH"] = browser
+        os.environ["CHROME_PATH"] = browser
 
 
-def _fig_to_base64_png(fig: object, tmp_dir: Path, fig_id: str) -> str | None:
-    """Convert a Plotly figure to a base64-encoded PNG data URI."""
+def _fig_to_png_path(fig: object, tmp_dir: Path, fig_id: str) -> Path | None:
+    """Render a Plotly figure to PNG on disk for WeasyPrint embedding."""
     try:
         import plotly.graph_objects as go
 
         if not isinstance(fig, go.Figure):
             return None
 
+        _ensure_kaleido_browser()
+
         png_path = tmp_dir / f"{fig_id}.png"
         fig.write_image(str(png_path), format="png", width=900, height=400, scale=1.5)
         png_bytes = png_path.read_bytes()
-        b64 = base64.b64encode(png_bytes).decode("ascii")
-        return f"data:image/png;base64,{b64}"
+        if not png_bytes.startswith(b"\x89PNG"):
+            logger.warning("PDF: invalid PNG header for %s", fig_id)
+            return None
+        return png_path
     except Exception as exc:
         logger.warning("PDF: kaleido failed for %s: %s", fig_id, exc)
         return None
@@ -237,24 +175,25 @@ def _build_html(
     samples_path: Path,
     report_name: str,
     timestamp: str,
-    chart_imgs: list[tuple[str, str, str | None]],
+    chart_imgs: list[tuple[str, str, Path | None]],
     slo_config: SLOConfig | None,
+    rendered_count: int,
 ) -> str:
     data_available = samples_path.exists()
     summary_table = _render_summary_table(samples_path) if data_available else ""
     kpi_cards = _render_kpi_cards(samples_path) if data_available else ""
     recs_html = _render_recommendations(samples_path, slo_config) if data_available else ""
 
-    # Two charts per page
     chart_pages = ""
     for i in range(0, len(chart_imgs), 2):
         pair_html = ""
-        for _fig_id, fig_title, img_uri in chart_imgs[i : i + 2]:
-            if img_uri:
+        for _fig_id, fig_title, png_path in chart_imgs[i : i + 2]:
+            if png_path is not None:
+                file_uri = png_path.resolve().as_uri()
                 pair_html += (
                     f'<div class="chart-pair">'
                     f'<div class="chart-title">{fig_title}</div>'
-                    f'<img class="chart" src="{img_uri}" alt="{fig_title}">'
+                    f'<img class="chart" src="{file_uri}" alt="{fig_title}">'
                     f"</div>"
                 )
             else:
@@ -276,6 +215,14 @@ def _build_html(
         else ""
     )
 
+    render_warning = ""
+    if data_available and rendered_count == 0:
+        render_warning = (
+            '<p style="color:#92400E;background:#FEF3C7;padding:8px;border-radius:3px">'
+            "&#9888; Chart rendering failed (check kaleido/Chrome). See logs."
+            "</p>"
+        )
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -286,7 +233,6 @@ def _build_html(
   </style>
 </head>
 <body>
-  <!-- Cover page -->
   <div class="cover">
     <h1>{report_name}</h1>
     <p>Performance Analysis Report</p>
@@ -294,8 +240,8 @@ def _build_html(
   </div>
   <div class="page-break"></div>
 
-  <!-- Summary & recommendations page -->
   {not_available}
+  {render_warning}
 
   <div class="section-title">Key Performance Indicators</div>
   {kpi_cards}
@@ -308,17 +254,15 @@ def _build_html(
 
   <div class="page-break"></div>
 
-  <!-- Charts -->
   <div class="section-title">Performance Charts</div>
   {chart_pages}
 
-  <footer>Powered by PerfSage &mdash; {timestamp}</footer>
+  <div class="pdf-footer">Powered by PerfSage &mdash; {timestamp}</div>
 </body>
 </html>"""
 
 
 def _minimal_pdf(output_path: Path, report_name: str, error_msg: str) -> Path:
-    """Write a minimal PDF using only stdlib (reportlab not needed — just raw PDF bytes)."""
     lines = [
         f"PerfSage Report: {report_name}",
         "",
@@ -327,7 +271,6 @@ def _minimal_pdf(output_path: Path, report_name: str, error_msg: str) -> Path:
         "",
         "Please use the HTML export instead.",
     ]
-    # Minimal valid PDF with one text page
     stream = (
         b"BT /F1 12 Tf 50 750 Td\n"
         + b"\n".join(
@@ -354,7 +297,7 @@ def _minimal_pdf(output_path: Path, report_name: str, error_msg: str) -> Path:
         b"0000000058 00000 n \n"
         b"0000000115 00000 n \n"
         b"0000000266 00000 n \n"
-        b"0000000400 00000 n \n"  # approximate; readers are tolerant
+        b"0000000400 00000 n \n"
         b"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n450\n%%EOF\n"
     )
 
@@ -369,43 +312,52 @@ def generate_pdf_report(
     output_path: Path,
     slo_config: SLOConfig | None = None,
 ) -> Path:
-    """Generate a PDF report.
-
-    Renders charts as static PNG using Plotly kaleido (fig.write_image),
-    saves PNGs to a temp dir, embeds as base64 data URIs, converts to PDF
-    with WeasyPrint.  Falls back to a minimal PDF if WeasyPrint is unavailable.
-    Returns output_path.
-    """
+    """Generate a PDF report with static chart PNGs via kaleido + WeasyPrint."""
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     tmp_dir = Path(tempfile.mkdtemp(prefix="perfsage_pdf_"))
 
     try:
         data_available = samples_path.exists()
-        figures = _build_figures(samples_path, slo_config) if data_available else [None] * 20
+        figure_objs = (
+            build_figure_objects(samples_path, slo_config)
+            if data_available
+            else {fid: None for fid, _ in EXPORT_FIGURES}
+        )
 
-        chart_imgs: list[tuple[str, str, str | None]] = []
-        for i, (fig_id, fig_title) in enumerate(_FIGURES):
-            fig = figures[i] if i < len(figures) else None
-            img_uri = _fig_to_base64_png(fig, tmp_dir, fig_id) if fig is not None else None
-            chart_imgs.append((fig_id, fig_title, img_uri))
+        chart_imgs: list[tuple[str, str, Path | None]] = []
+        rendered = 0
+        for fig_id, fig_title in EXPORT_FIGURES:
+            fig = figure_objs.get(fig_id)
+            png_path = _fig_to_png_path(fig, tmp_dir, fig_id) if fig is not None else None
+            if png_path is not None:
+                rendered += 1
+            chart_imgs.append((fig_id, fig_title, png_path))
 
-        html_content = _build_html(samples_path, report_name, timestamp, chart_imgs, slo_config)
+        if data_available and rendered == 0:
+            logger.error(
+                "PDF: all %d chart renders failed — check kaleido/Chrome deps",
+                len(EXPORT_FIGURES),
+            )
+
+        html_content = _build_html(
+            samples_path, report_name, timestamp, chart_imgs, slo_config, rendered
+        )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             import weasyprint
 
-            weasyprint.HTML(string=html_content).write_pdf(str(output_path))
+            weasyprint.HTML(string=html_content, base_url=str(tmp_dir)).write_pdf(str(output_path))
         except Exception as wp_exc:
-            logger.warning(
-                "WeasyPrint failed (%s); falling back to minimal PDF. "
-                "Install system Pango/Cairo libraries to enable full PDF generation.",
-                wp_exc,
-            )
+            logger.warning("WeasyPrint failed (%s); falling back to minimal PDF.", wp_exc)
             return _minimal_pdf(output_path, report_name, str(wp_exc))
 
         return output_path
 
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+# Exposed for unit tests
+_build_html_for_tests = _build_html

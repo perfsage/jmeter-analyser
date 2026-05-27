@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc libpango-1.0-0 libpangoft2-1.0-0 libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md VERSION ./
 COPY perfsage/ perfsage/
 
 RUN pip install --upgrade pip && \
@@ -38,6 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libdrm2 \
     libxkbcommon0 \
     libcups2 \
+    chromium \
     redis-server \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
@@ -50,9 +51,24 @@ WORKDIR /app
 
 COPY --from=builder /install /usr/local
 COPY perfsage/ perfsage/
+COPY VERSION /app/VERSION
 COPY docker/supervisord.conf /etc/supervisor/conf.d/perfsage.conf
 
+ARG PERFSAGE_VERSION=0.1.0
+LABEL org.opencontainers.image.title="PerfSage JMeter Analyser" \
+      org.opencontainers.image.description="AI-powered JMeter performance report analysis" \
+      org.opencontainers.image.source="https://github.com/perfsage/jmeter-analyser" \
+      org.opencontainers.image.version="${PERFSAGE_VERSION}" \
+      org.opencontainers.image.vendor="PerfSage"
+
 ENV REDIS_URL=redis://127.0.0.1:6379
+ENV BROWSER_PATH=/usr/bin/chromium
+ENV CHROME_PATH=/usr/bin/chromium
+
+# Warm kaleido/choreographer as the runtime user so PDF chart export works on first request.
+USER perfsage
+RUN python -c "import plotly.graph_objects as go; go.Figure(data=[go.Scatter(x=[1], y=[1])]).write_image('/tmp/kaleido-warmup.png')"
+USER root
 
 EXPOSE 8000
 

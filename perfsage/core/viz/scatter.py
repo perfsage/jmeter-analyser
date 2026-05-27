@@ -10,7 +10,7 @@ import polars as pl
 
 from perfsage.core.analysis.anomalies import detect_knee_point
 from perfsage.core.analysis.metrics import compute_correlation_matrix
-from perfsage.core.viz._theme import AMBER, ERROR_RED, NAVY, apply_theme
+from perfsage.core.viz._theme import AMBER, ERROR_RED, LABEL_COLORS, NAVY, apply_theme
 from perfsage.core.viz._utils import time_bucket as _time_bucket
 
 _SAMPLE_LIMIT = 50_000
@@ -178,6 +178,49 @@ def fig_rt_vs_time_by_status(samples_path: Path) -> go.Figure:
     title = f"Response Time by Status{sampled_note}"
     apply_theme(fig, title)
     fig.update_layout(xaxis_title="Time", yaxis_title="Response Time (ms)")
+    return fig
+
+
+def fig_rt_scatter_by_label(samples_path: Path, sample_limit: int = 5000) -> go.Figure:
+    """Scatter of elapsed vs time, one trace per label with proportional stratified sampling."""
+    title = "Response Time Scatter by Transaction"
+    df = pl.read_parquet(samples_path)
+    if df.is_empty():
+        return apply_theme(go.Figure(), title)
+
+    total_rows = len(df)
+    sampled_note = ""
+    if total_rows > sample_limit:
+        parts: list[pl.DataFrame] = []
+        for lbl in df["label"].unique().sort().to_list():
+            subset = df.filter(pl.col("label") == lbl)
+            share = subset.height / total_rows
+            target = max(1, int(round(sample_limit * share)))
+            take = min(target, subset.height)
+            parts.append(subset.sample(n=take, seed=42))
+        df = pl.concat(parts)
+        if df.height > sample_limit:
+            df = df.sample(n=sample_limit, seed=43)
+        sampled_note = f" — sampled {df.height:,} of {total_rows:,}"
+
+    df = df.with_columns((pl.col("timestamp_ms").cast(pl.Datetime("ms"))).alias("ts"))
+
+    fig = go.Figure()
+    for idx, lbl in enumerate(df["label"].unique().sort().to_list()):
+        sub = df.filter(pl.col("label") == lbl)
+        color = LABEL_COLORS[idx % len(LABEL_COLORS)]
+        fig.add_trace(
+            go.Scatter(
+                x=sub["ts"].to_list(),
+                y=sub["elapsed"].to_list(),
+                mode="markers",
+                marker=dict(color=color, size=5, opacity=0.45),
+                name=str(lbl),
+            )
+        )
+
+    apply_theme(fig, f"{title}{sampled_note}")
+    fig.update_layout(xaxis_title="Time", yaxis_title="Response time (ms)")
     return fig
 
 

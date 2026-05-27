@@ -44,9 +44,7 @@ def fig_slo_gauges(
     apdex_df = compute_apdex(samples_path, t_seconds=slo_config.apdex_t)
     total_n = int(apdex_df["total"].sum())
     if total_n > 0:
-        apdex_score = float(
-            (apdex_df["apdex_score"] * apdex_df["total"]).sum() / total_n
-        )
+        apdex_score = float((apdex_df["apdex_score"] * apdex_df["total"]).sum() / total_n)
     else:
         apdex_score = 0.0
 
@@ -198,10 +196,7 @@ def fig_error_sunburst(samples_path: Path) -> go.Figure:
         fig = go.Figure()
         return apply_theme(fig, "Error Distribution (No errors in dataset)")
 
-    counts = (
-        error_df.group_by(["response_code", "label"])
-        .agg(pl.len().alias("count"))
-    )
+    counts = error_df.group_by(["response_code", "label"]).agg(pl.len().alias("count"))
 
     rc_totals = counts.group_by("response_code").agg(pl.col("count").sum().alias("rc_total"))
 

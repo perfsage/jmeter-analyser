@@ -79,9 +79,7 @@ def run_all_recommendations(
                     Recommendation(
                         kind="tail_latency_ratio",
                         severity=InsightSeverity.WARNING,
-                        message=(
-                            f"Label '{label}': p99/p50 ratio is {ratio:.1f}x (threshold: 5x)"
-                        ),
+                        message=(f"Label '{label}': p99/p50 ratio is {ratio:.1f}x (threshold: 5x)"),
                         data={"label": label, "ratio": ratio, "p50": p50, "p99": p99},
                     )
                 )
@@ -184,9 +182,7 @@ def run_all_recommendations(
                     Recommendation(
                         kind="high_variability",
                         severity=InsightSeverity.WARNING,
-                        message=(
-                            f"Label '{label}': high response time variability (CV={cv:.2f})"
-                        ),
+                        message=(f"Label '{label}': high response time variability (CV={cv:.2f})"),
                         data={"label": label, "cv": cv, "mean": mean, "std": std},
                     )
                 )

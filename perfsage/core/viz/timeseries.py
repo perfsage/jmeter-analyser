@@ -167,9 +167,7 @@ def fig_errors_over_time(samples_path: Path, bucket_seconds: int = 5) -> go.Figu
         )
         .sort("time_bucket")
         .with_columns(
-            (pl.col("error_count").cast(pl.Float64) / pl.col("total") * 100).alias(
-                "error_rate_pct"
-            )
+            (pl.col("error_count").cast(pl.Float64) / pl.col("total") * 100).alias("error_rate_pct")
         )
     )
 

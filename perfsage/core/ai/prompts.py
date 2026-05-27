@@ -86,9 +86,7 @@ def build_analysis_prompt(samples_path: Path, slo_config: SLOConfig | None = Non
     try:
         recs = run_all_recommendations(samples_path, slo_config)
         if recs:
-            rec_lines = [
-                f"  - [{r.severity.value.upper()}] {r.message}" for r in recs[:8]
-            ]
+            rec_lines = [f"  - [{r.severity.value.upper()}] {r.message}" for r in recs[:8]]
             sections.append("## Automated Rule Findings\n" + "\n".join(rec_lines))
     except Exception:
         pass

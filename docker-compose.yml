@@ -4,6 +4,8 @@ services:
     env_file: .env
     environment:
       REDIS_URL: redis://127.0.0.1:6379
+      BROWSER_PATH: /usr/bin/chromium
+      CHROME_PATH: /usr/bin/chromium
     ports:
       - "8000:8000"
     volumes:

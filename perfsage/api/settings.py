@@ -43,9 +43,7 @@ async def save_slo_defaults(
     settings: Settings = Depends(get_settings),
 ) -> str:
     """Save SLO default thresholds. Returns HTML fragment."""
-    config = SLOConfig(
-        p90_ms=p90_ms, p99_ms=p99_ms, error_rate_pct=error_rate_pct, apdex_t=apdex_t
-    )
+    config = SLOConfig(p90_ms=p90_ms, p99_ms=p99_ms, error_rate_pct=error_rate_pct, apdex_t=apdex_t)
     engine = get_engine(settings.database_url)
     with get_session(engine) as session:
         AppSettingsRepo(session).set("slo_defaults", json.dumps(config.__dict__))

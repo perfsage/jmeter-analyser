@@ -1,158 +1,224 @@
 {% extends "base.html" %}
 {% block title %}{{ report.name }} — PerfSage{% endblock %}
+{% block head %}
+<script src="/static/js/report.js" defer></script>
+{% endblock %}
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
-  <div>
-    <h1 style="color:var(--navy)">{{ report.name }}</h1>
-    <p style="color:#718096;font-size:0.875rem">
+<div class="report-sticky-header">
+  <div class="report-header-main">
+    <h1>{{ report.name }}</h1>
+    <p class="report-meta">
       {{ report.source_filename }} &middot; {{ "{:,}".format(report.parsed_row_count) }} samples &middot;
-      {{ report.duration_seconds | round(1) }}s test duration &middot;
+      {{ report.duration_seconds | round(1) }}s &middot;
       <span class="badge-{{ report.status.value }}">{{ report.status.value }}</span>
     </p>
   </div>
-  <div style="display:flex;gap:0.75rem">
-    <a href="/api/exports/{{ report.id }}/html" class="btn-outline" download>Export HTML</a>
-    <a href="/api/exports/{{ report.id }}/pdf" class="btn-primary" download>Export PDF</a>
+  <div class="report-header-actions">
+    <a href="/api/exports/{{ report.id }}/html?force=1" class="btn-outline" download data-export-link>Export HTML</a>
+    <a href="/api/exports/{{ report.id }}/pdf?force=1" class="btn-primary" download data-export-link>Export PDF</a>
   </div>
 </div>
 
-<!-- Summary stats -->
-<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:2rem">
+<div class="kpi-row">
   {% for stat in summary_stats %}
-  <div class="card" style="padding:1rem">
-    <p style="font-size:0.75rem;color:#718096">{{ stat.label }}</p>
-    <p style="font-size:1.5rem;font-weight:700;color:var(--navy)">{{ stat.value }}</p>
+  <div class="kpi-card">
+    <span class="kpi-label">{{ stat.label }}</span>
+    <span class="kpi-value">{{ stat.value }}</span>
   </div>
   {% endfor %}
 </div>
 
-<!-- Recommendations / Insights -->
-{% if recommendations %}
-<div class="card" style="margin-bottom:2rem">
-  <h2 style="margin-bottom:1rem">&#9889; Insights &amp; Recommendations</h2>
-  {% for rec in recommendations %}
-  <div style="padding:0.75rem;border-radius:6px;margin-bottom:0.5rem;
-              background:{% if rec.severity.value == 'critical' %}#FFF5F5{% elif rec.severity.value == 'warning' %}#FFFBEB{% else %}#F0FFF4{% endif %};
-              border-left:4px solid {% if rec.severity.value == 'critical' %}var(--error-red){% elif rec.severity.value == 'warning' %}var(--warn-yellow){% else %}var(--success-green){% endif %}">
-    <strong>{{ rec.severity.value | upper }}:</strong> {{ rec.message }}
-  </div>
-  {% endfor %}
-</div>
+{% if report.status.value == 'ready' %}
+{% include "partials/topmate_nudge.html" %}
 {% endif %}
 
-<!-- AI Insights (if enabled) -->
-{% if ai_insights %}
-<div class="card" style="margin-bottom:2rem;border:1.5px solid var(--amber)">
-  <h2 style="margin-bottom:1rem">&#129302; AI Analysis</h2>
-  <div style="white-space:pre-wrap;font-size:0.9375rem;line-height:1.6">{{ ai_insights }}</div>
-</div>
-{% else %}
-<div class="card" style="margin-bottom:2rem">
-  <div style="display:flex;justify-content:space-between;align-items:center">
-    <div>
-      <h3 style="margin-bottom:0.25rem">AI-Powered Analysis</h3>
-      <p style="font-size:0.875rem;color:#718096">
-        {% if ai_key_configured %}Click to generate in-depth AI analysis of this report.{% else %}Configure an AI key in <a href="/settings">Settings</a> to enable AI analysis.{% endif %}
-      </p>
+<!-- Executive Summary -->
+<section class="report-section" id="section-summary">
+  <button type="button" class="report-section-toggle" aria-expanded="true">
+    <span class="section-chevron">&#9660;</span>
+    <h2>Executive Summary</h2>
+  </button>
+  <div class="report-section-body">
+    {% if recommendations %}
+    <div class="card">
+      <h3 class="chart-card-title">Insights &amp; Recommendations</h3>
+      {% for rec in recommendations %}
+      <div class="rec-item rec-{{ rec.severity.value }}">
+        <strong>{{ rec.severity.value | upper }}:</strong> {{ rec.message }}
+      </div>
+      {% endfor %}
     </div>
-    {% if ai_key_configured %}
-    <button class="btn-amber"
-            hx-post="/api/ai/{{ report.id }}/generate"
-            hx-target="#ai-result"
-            hx-swap="innerHTML"
-            hx-indicator="#ai-spinner">
-      Generate AI Insights
-    </button>
+    {% endif %}
+
+    {% if ai_insights_html %}
+    <div class="card card-ai">
+      <h3 class="chart-card-title">AI Analysis</h3>
+      <div class="ai-insights-block">
+        <div class="ai-insights-toolbar">
+          <button type="button" class="btn-outline btn-sm" id="ai-copy-btn" data-ai-raw="{{ ai_insights_raw | e }}">Copy markdown</button>
+        </div>
+        <div class="ai-markdown">{{ ai_insights_html | safe }}</div>
+      </div>
+    </div>
+    {% else %}
+    <div class="card card-ai">
+      <div class="ai-generate-row">
+        <div>
+          <h3 class="chart-card-title">AI-Powered Analysis</h3>
+          <p class="chart-caption">
+            {% if ai_key_configured %}Generate in-depth AI analysis of this report.{% else %}Configure an AI key in <a href="/settings">Settings</a>.{% endif %}
+          </p>
+        </div>
+        {% if ai_key_configured %}
+        <button class="btn-amber" hx-post="/api/ai/{{ report.id }}/generate" hx-target="#ai-result" hx-swap="innerHTML" hx-indicator="#ai-spinner">Generate AI Insights</button>
+        {% endif %}
+      </div>
+      <span id="ai-spinner" class="htmx-indicator">Generating...</span>
+      <div id="ai-result"></div>
+    </div>
     {% endif %}
   </div>
-  <span id="ai-spinner" class="htmx-indicator" style="display:none">&#9203; Generating...</span>
-  <div id="ai-result"></div>
-</div>
-{% endif %}
+</section>
 
-<!-- Visualizations grid -->
-<div class="viz-grid">
-  <!-- Fig 1: RT over time (full width) -->
-  <div class="card full-width">
-    <div id="fig-rt-time"></div>
+<!-- Timeline & Load -->
+<section class="report-section" id="section-timeline">
+  <button type="button" class="report-section-toggle" aria-expanded="true">
+    <span class="section-chevron">&#9660;</span>
+    <h2>Timeline &amp; Load</h2>
+  </button>
+  <div class="report-section-body">
+    <div class="card chart-card hero-chart">
+      <h3 class="chart-card-title">Response Time Over Time</h3>
+      <p class="chart-caption">Spot tail latency clusters during ramp-up and steady state.</p>
+      <div class="chart-tabs">
+        <div class="chart-tab-bar">
+          <button type="button" class="chart-tab-btn active" data-tab="scatter">Scatter</button>
+          <button type="button" class="chart-tab-btn" data-tab="percentile">Percentile bands</button>
+        </div>
+        <div class="chart-tab-panel active" data-panel="scatter"><div id="fig-rt-scatter"></div></div>
+        <div class="chart-tab-panel" data-panel="percentile"><div id="fig-rt-time"></div></div>
+      </div>
+    </div>
+    <div class="chart-grid-2">
+      {% set timeline_charts = [
+        ('fig-percentile-fan', 'Percentile Fan', 'Cleaner p50–p99 ribbon over time.'),
+        ('fig-throughput', 'Throughput', 'Requests per second over the test duration.'),
+        ('fig-threads', 'Threads vs RT', 'Concurrency impact on response time.'),
+        ('fig-bytes', 'Bytes Over Time', 'Payload volume trends.'),
+        ('fig-sli-burn', 'SLI Burn Rate', 'Error rate and p99 vs SLO thresholds.'),
+        ('fig-transaction-mix', 'Transaction Mix', 'Workload composition drift over time.'),
+        ('fig-connect-breakdown', 'Latency Breakdown', 'Connect vs server vs idle wait.'),
+        ('fig-throughput-efficiency', 'Throughput Efficiency', 'Bytes/ms bandwidth signal.'),
+        ('fig-steady-compare', 'Warmup vs Steady', 'Compare ramp-up to steady-state tails.'),
+      ] %}
+      {% for chart_id, title, caption in timeline_charts %}
+      <div class="card chart-card">
+        <h3 class="chart-card-title">{{ title }}</h3>
+        <p class="chart-caption">{{ caption }}</p>
+        <div id="{{ chart_id }}"></div>
+      </div>
+      {% endfor %}
+    </div>
   </div>
-  <!-- Fig 2: Throughput over time -->
-  <div class="card">
-    <div id="fig-throughput"></div>
+</section>
+
+<!-- Distribution & Tails -->
+<section class="report-section" id="section-distribution">
+  <button type="button" class="report-section-toggle" aria-expanded="true">
+    <span class="section-chevron">&#9660;</span>
+    <h2>Distribution &amp; Tails</h2>
+  </button>
+  <div class="report-section-body">
+    <div class="chart-grid-2">
+      {% for chart_id, title, caption in [
+        ('fig-histogram', 'Latency Histogram', 'Overall response time distribution.'),
+        ('fig-cdf', 'Latency CDF', 'Cumulative probability of response times.'),
+        ('fig-boxplots', 'Boxplots per Label', 'Per-transaction spread and outliers.'),
+        ('fig-heatmap', 'RT Heatmap', 'Time vs label intensity map.'),
+        ('fig-outlier-scatter', 'IQR Outliers', 'Samples beyond 1.5×IQR fences.'),
+        ('fig-variability', 'Variability', 'Coefficient of variation by label.'),
+      ] %}
+      <div class="card chart-card">
+        <h3 class="chart-card-title">{{ title }}</h3>
+        <p class="chart-caption">{{ caption }}</p>
+        <div id="{{ chart_id }}"></div>
+      </div>
+      {% endfor %}
+    </div>
   </div>
-  <!-- Fig 3: Errors over time -->
-  <div class="card">
-    <div id="fig-errors"></div>
+</section>
+
+<!-- Saturation & Correlation -->
+<section class="report-section" id="section-saturation">
+  <button type="button" class="report-section-toggle" aria-expanded="true">
+    <span class="section-chevron">&#9660;</span>
+    <h2>Saturation &amp; Correlation</h2>
+  </button>
+  <div class="report-section-body">
+    <div class="chart-grid-2">
+      {% for chart_id, title, caption in [
+        ('fig-rt-throughput', 'RT vs Throughput', 'Find the knee where latency spikes.'),
+        ('fig-rt-concurrency', 'RT vs Concurrency', 'Latency under increasing load.'),
+        ('fig-correlation', 'Correlation Matrix', 'Metric interdependencies.'),
+        ('fig-threads-error-heatmap', 'Threads vs Errors', 'Failure density under load.'),
+      ] %}
+      <div class="card chart-card">
+        <h3 class="chart-card-title">{{ title }}</h3>
+        <p class="chart-caption">{{ caption }}</p>
+        <div id="{{ chart_id }}"></div>
+      </div>
+      {% endfor %}
+    </div>
   </div>
-  <!-- Fig 4: Threads vs RT -->
-  <div class="card">
-    <div id="fig-threads"></div>
+</section>
+
+<!-- SLO & Quality -->
+<section class="report-section" id="section-slo">
+  <button type="button" class="report-section-toggle" aria-expanded="true">
+    <span class="section-chevron">&#9660;</span>
+    <h2>SLO &amp; Quality</h2>
+  </button>
+  <div class="report-section-body">
+    <div class="chart-grid-2">
+      {% for chart_id, title, caption in [
+        ('fig-slo-gauges', 'SLO Gauges', 'p90/p99/error vs targets.'),
+        ('fig-apdex', 'Apdex by Label', 'User satisfaction score per transaction.'),
+        ('fig-slowest', 'Slowest Transactions', 'Top offenders by max latency.'),
+      ] %}
+      <div class="card chart-card">
+        <h3 class="chart-card-title">{{ title }}</h3>
+        <p class="chart-caption">{{ caption }}</p>
+        <div id="{{ chart_id }}"></div>
+      </div>
+      {% endfor %}
+    </div>
   </div>
-  <!-- Fig 5: Bytes over time -->
-  <div class="card">
-    <div id="fig-bytes"></div>
+</section>
+
+<!-- Errors & Diagnostics -->
+<section class="report-section" id="section-errors">
+  <button type="button" class="report-section-toggle" aria-expanded="true">
+    <span class="section-chevron">&#9660;</span>
+    <h2>Errors &amp; Diagnostics</h2>
+  </button>
+  <div class="report-section-body">
+    <div class="chart-grid-2">
+      {% for chart_id, title, caption in [
+        ('fig-errors', 'Errors Over Time', 'Failure rate timeline.'),
+        ('fig-sunburst', 'Error Sunburst', 'Hierarchical error breakdown.'),
+        ('fig-rt-status', 'RT by Status', 'Success vs error latency patterns.'),
+        ('fig-components', 'Latency Components', 'Connect, latency, idle decomposition.'),
+        ('fig-multiples', 'Small Multiples', 'Per-label RT over time.'),
+      ] %}
+      <div class="card chart-card{% if chart_id == 'fig-multiples' %} full-width{% endif %}">
+        <h3 class="chart-card-title">{{ title }}</h3>
+        <p class="chart-caption">{{ caption }}</p>
+        <div id="{{ chart_id }}"></div>
+      </div>
+      {% endfor %}
+    </div>
   </div>
-  <!-- Fig 6: Latency histogram -->
-  <div class="card">
-    <div id="fig-histogram"></div>
-  </div>
-  <!-- Fig 7: CDF -->
-  <div class="card">
-    <div id="fig-cdf"></div>
-  </div>
-  <!-- Fig 8: Boxplots -->
-  <div class="card full-width">
-    <div id="fig-boxplots"></div>
-  </div>
-  <!-- Fig 9: Heatmap (full width) -->
-  <div class="card full-width">
-    <div id="fig-heatmap"></div>
-  </div>
-  <!-- Fig 10: RT vs Throughput -->
-  <div class="card">
-    <div id="fig-rt-throughput"></div>
-  </div>
-  <!-- Fig 11: RT vs Concurrency -->
-  <div class="card">
-    <div id="fig-rt-concurrency"></div>
-  </div>
-  <!-- Fig 12: RT vs Time by status -->
-  <div class="card full-width">
-    <div id="fig-rt-status"></div>
-  </div>
-  <!-- Fig 13: Correlation matrix -->
-  <div class="card">
-    <div id="fig-correlation"></div>
-  </div>
-  <!-- Fig 14: Latency components -->
-  <div class="card">
-    <div id="fig-components"></div>
-  </div>
-  <!-- Fig 15: Small multiples (full width) -->
-  <div class="card full-width">
-    <div id="fig-multiples"></div>
-  </div>
-  <!-- Fig 16: SLO gauges -->
-  <div class="card">
-    <div id="fig-slo-gauges"></div>
-  </div>
-  <!-- Fig 17: APDEX by label -->
-  <div class="card">
-    <div id="fig-apdex"></div>
-  </div>
-  <!-- Fig 18: Slowest transactions -->
-  <div class="card full-width">
-    <div id="fig-slowest"></div>
-  </div>
-  <!-- Fig 19: Error sunburst -->
-  <div class="card">
-    <div id="fig-sunburst"></div>
-  </div>
-  <!-- Fig 20: Variability chart -->
-  <div class="card">
-    <div id="fig-variability"></div>
-  </div>
-</div>
+</section>
 
 <script>
 var figs = {{ figures_json | safe }};

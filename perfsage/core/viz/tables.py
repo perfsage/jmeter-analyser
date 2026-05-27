@@ -21,12 +21,7 @@ def fig_slowest_transactions(samples_path: Path, top_n: int = 20) -> go.Figure:
     top = df.sort("elapsed", descending=True).head(top_n)
 
     # Format timestamp
-    ts_col = (
-        top["timestamp_ms"]
-        .cast(pl.Datetime("ms"))
-        .dt.strftime("%Y-%m-%d %H:%M:%S")
-        .to_list()
-    )
+    ts_col = top["timestamp_ms"].cast(pl.Datetime("ms")).dt.strftime("%Y-%m-%d %H:%M:%S").to_list()
 
     url_col = [
         (str(u)[:_URL_MAX_LEN] + "…" if len(str(u)) > _URL_MAX_LEN else str(u))
@@ -92,10 +87,7 @@ def fig_variability_chart(samples_path: Path) -> go.Figure:
     labels = [str(lbl) for lbl in cv_df["label"].to_list()]
     cvs = cv_df["cv"].to_list()
 
-    colors = [
-        ERROR_RED if float(c) > 2.0 else (AMBER if float(c) > 1.0 else NAVY)
-        for c in cvs
-    ]
+    colors = [ERROR_RED if float(c) > 2.0 else (AMBER if float(c) > 1.0 else NAVY) for c in cvs]
 
     fig = go.Figure(
         go.Bar(

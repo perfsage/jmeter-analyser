@@ -1,107 +1,241 @@
-# PerfSage JMeter Analyser
+<div align="center">
 
-> AI-powered JMeter performance report analysis with 20+ expert-grade visualizations.
+# ⚡ PerfSage JMeter Analyser
 
-## Features
+### *Generating value in performance analysis*
 
-- **Upload or paste** JTL/CSV/XML results from any JMeter version (2.x–5.6)
-- **20 interactive visualizations** including scatter plots, latency heatmaps, CDF, APDEX, SLO gauges
-- **Expert recommendations** (tail-latency ratio, saturation knee, error spikes, SLO violations)
-- **AI-powered narrative** (OpenAI GPT-4, Anthropic Claude, or Google Gemini)
-- **Persistent reports** — all analyses survive container restarts
-- **Export** to standalone HTML or PDF
+**Upload JMeter results → get expert charts, SLO insights, AI narratives, and shareable HTML/PDF reports.**
 
-## Quick Start
+[![Docker Hub](https://img.shields.io/docker/v/perfsage/jmeter-analyser?label=Docker%20Hub&logo=docker&color=2496ED)](https://hub.docker.com/r/perfsage/jmeter-analyser)
+[![Version](https://img.shields.io/badge/version-0.1.0-D4A857)](VERSION)
+[![Python](https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-0B1F3A)](LICENSE)
 
-### Docker (recommended)
+[🚀 Quick Start](#-installation) · [📊 Features](#-features) · [🐳 Docker Hub](https://hub.docker.com/r/perfsage/jmeter-analyser) · [📦 Releases](https://github.com/perfsage/jmeter-analyser/releases)
 
-One container runs **Redis**, the **background worker**, and the **web server** (supervisord).
+</div>
+
+---
+
+## 🎯 Why PerfSage?
+
+Load tests produce **millions of rows** — but stakeholders need **answers**, not spreadsheets.
+
+PerfSage transforms raw JTL / CSV / XML into:
+
+| | |
+|---|---|
+| 📈 **29 expert visualizations** | Scatter, heatmaps, CDF, APDEX, SLO gauges, correlation matrices |
+| 🧠 **Smart recommendations** | Tail-latency ratio, saturation knee, error spikes, SLO violations |
+| 🤖 **AI narrative** | Optional GPT-4, Claude, or Gemini insights on any report |
+| 📄 **One-click export** | Self-contained HTML or print-quality PDF with embedded charts |
+| 💾 **Persistent reports** | Survive restarts — SQLite + Parquet, paginated dashboard |
+
+> **Our mission:** Turn performance data into decisions — faster triage, clearer stories, zero toolchain friction.
+
+---
+
+## ✨ Features
+
+- **📤 Upload or paste** — JMeter 2.x through 5.6 (CSV & XML JTL)
+- **📊 Interactive charts** — Plotly-powered, tabbed report UI
+- **🎯 SLO tracking** — Configurable thresholds, burn-rate timeline, compliance gauges
+- **🔬 Expert analysis** — Warmup detection, steady-state compare, outlier scatter
+- **🤖 Multi-provider AI** — Keys encrypted at rest (Fernet + `PERFSAGE_SECRET`)
+- **📑 Export** — Standalone HTML or PDF (29 chart images via kaleido + WeasyPrint)
+- **🐳 Single container** — Redis, background worker, and web server bundled
+
+---
+
+## 🚀 Installation
+
+Choose the path that fits your workflow:
+
+### Option 1 — Docker Hub pull *(fastest)*
 
 ```bash
-# Clone and start
-git clone https://github.com/perfsage/jmeter-analyser
-cd jmeter-analyser
+docker pull perfsage/jmeter-analyser:latest
 
-# Configure
-cp .env.example .env
-# Edit .env — set PERFSAGE_SECRET to a random 32-char string
-
-# Start (single app service)
-docker compose up -d
-
-# Open
-open http://localhost:8000
+docker run -d \
+  --name perfsage \
+  -p 8000:8000 \
+  -v perfsage-data:/app/data \
+  -e PERFSAGE_SECRET="change-me-to-a-32-char-random-string" \
+  perfsage/jmeter-analyser:latest
 ```
 
-Use **All Reports** → **Flush old reports** to remove older analyses (keeps the 5 most recent). The list is paginated (25 per page).
+Open **http://localhost:8000** 🎉
 
-### Local Development
+---
+
+### Option 2 — Docker Compose *(recommended for teams)*
 
 ```bash
-# Install
+git clone https://github.com/perfsage/jmeter-analyser.git
+cd jmeter-analyser
+
+cp .env.example .env
+# ✏️ Edit .env — set PERFSAGE_SECRET to a random 32+ character string
+
+docker compose up -d
+```
+
+Open **http://localhost:8000** · View logs with `docker compose logs -f`
+
+---
+
+### Option 3 — Build from source
+
+```bash
+git clone https://github.com/perfsage/jmeter-analyser.git
+cd jmeter-analyser
+
+docker compose build
+docker compose up -d
+```
+
+Every push to `main` triggers a CI build → [Docker Hub](https://hub.docker.com/r/perfsage/jmeter-analyser).
+
+---
+
+### Option 4 — Local Python development
+
+```bash
+git clone https://github.com/perfsage/jmeter-analyser.git
+cd jmeter-analyser
+
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[test]"
 
-# Start Redis (required for background jobs)
+# Redis (required for background jobs)
 docker run -d -p 6379:6379 redis:7-alpine
 
-# Set environment
 export PERFSAGE_SECRET="your-32-char-secret-here"
 export REDIS_URL="redis://localhost:6379"
 
-# Start web server
+# Terminal 1 — web server
 uvicorn perfsage.main:app --reload
 
-# Start worker (in a second terminal)
+# Terminal 2 — background worker
 arq perfsage.core.jobs.queue.WorkerSettings
 ```
 
-## Configuration
+Open **http://localhost:8000**
+
+---
+
+## 📖 Usage
+
+```
+1. Upload  →  Drop a .jtl / .csv / .xml file (or paste content)
+2. Wait    →  Background worker ingests → Parquet → analysis
+3. Explore →  29 charts, KPIs, recommendations, optional AI insights
+4. Export  →  Download HTML or PDF from the report page
+5. Manage  →  All Reports → paginated list, flush old analyses
+```
+
+**AI setup:** Settings → pick provider → enter API key → **Generate AI Insights** on any report.
+
+---
+
+## ⚙️ Configuration
 
 | Variable | Default | Description |
-|---|---|---|
-| `PERFSAGE_SECRET` | (required) | Secret key for encrypting AI API keys. Must be set. |
-| `REDIS_URL` | `redis://127.0.0.1:6379` | Redis URL (bundled in Docker image) |
-| `DATABASE_URL` | `sqlite:///./data/perfsage.db` | SQLite database path |
-| `DATA_DIR` | `data` | Directory for Parquet files and exports |
-| `MAX_UPLOAD_BYTES` | `2147483648` (2GB) | Maximum upload file size |
-| `DEBUG` | `false` | Enable debug logging |
+|----------|---------|-------------|
+| `PERFSAGE_SECRET` | *(required)* | Encrypts AI API keys — **must** be set |
+| `REDIS_URL` | `redis://127.0.0.1:6379` | Bundled inside Docker image |
+| `DATABASE_URL` | `sqlite:///./data/perfsage.db` | Report metadata |
+| `DATA_DIR` | `data` | Parquet, exports, uploads — **mount a volume here** |
+| `MAX_UPLOAD_BYTES` | `2147483648` (2 GB) | Max upload size |
+| `DEBUG` | `false` | Verbose logging |
 
-## AI Provider Setup
+---
 
-1. Go to **Settings** in the UI (`/settings`)
-2. Select your provider (OpenAI, Anthropic, or Gemini)
-3. Enter your API key
-4. On any report page, click **Generate AI Insights**
-
-Keys are encrypted at rest using Fernet (AES-128-CBC) with a key derived from `PERFSAGE_SECRET`.
-
-## Architecture
+## 🏗 Architecture
 
 ```
-Browser (HTMX + Plotly)
-    ↔ FastAPI (uvicorn) — web views + REST API
-    → Redis (arq job queue + SSE progress, bundled in container)
-    → arq worker (ingest + analysis, same container)
-    → SQLite (report metadata)
-    → Parquet files (samples + aggregates)
-    → LLM provider (AI insights)
+┌─────────────────────────────────────────────────────────┐
+│  Browser  (HTMX + Plotly.js)                            │
+└──────────────────────────┬──────────────────────────────┘
+                           │ HTTP / SSE
+┌──────────────────────────▼──────────────────────────────┐
+│  FastAPI (uvicorn)  —  web views + REST API             │
+├─────────────────────────────────────────────────────────┤
+│  Redis  →  arq worker  →  ingest + analysis             │
+│  SQLite (metadata)  +  Parquet (samples & aggregates)   │
+│  LLM providers (OpenAI / Anthropic / Gemini) — optional │
+└─────────────────────────────────────────────────────────┘
 ```
 
-## Supported JMeter Versions
+**One Docker container** runs Redis, worker, and web via supervisord.
 
-- JMeter 2.x (CSV: timeStamp, elapsed, label, responseCode, responseMessage, threadName, dataType, success, bytes)
-- JMeter 3.x–4.x (adds sentBytes, grpThreads, allThreads, URL, Latency, IdleTime, Connect, failureMessage)
-- JMeter 5.x–5.6 (same as 3.x with normalised column names)
-- XML JTL (all versions: httpSample and sample elements)
+---
 
-## Running Tests
+## 📋 Supported JMeter formats
+
+| Version | Format | Notes |
+|---------|--------|-------|
+| 2.x | CSV | Core columns: timeStamp, elapsed, label, responseCode… |
+| 3.x – 4.x | CSV | + sentBytes, Latency, Connect, failureMessage |
+| 5.x – 5.6 | CSV | Normalised column names (`latency` vs `Latency`) |
+| All | XML JTL | `httpSample` and `sample` elements |
+
+---
+
+## 🏷 Versioning
+
+Versions are tracked in-repo:
+
+| File | Purpose |
+|------|---------|
+| [`VERSION`](VERSION) | Current semver (`0.1.0`) — used by Docker tags & health check |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release notes |
+| Git tags | `v0.1.0`, `v0.2.0`, … — trigger semver Docker Hub tags |
+
+**Release flow:**
+
+```bash
+# 1. Bump VERSION + CHANGELOG.md
+# 2. Commit and tag
+git tag v0.1.0 && git push origin main --tags
+# 3. GitHub Actions builds & pushes perfsage/jmeter-analyser:0.1.0 + :latest
+```
+
+---
+
+## 🧪 Tests
 
 ```bash
 pip install -e ".[test]"
-pytest -q
+
+pytest -q                          # unit + integration
+pytest -m "not slow" -q            # skip kaleido PDF renders
+pytest tests/e2e/ -q               # requires app at localhost:8000
 ```
 
-## License
+---
 
-MIT — see [LICENSE](LICENSE) for details.
+## 🤝 CI / CD
+
+| Workflow | Trigger | Action |
+|----------|---------|--------|
+| **CI** | Push & PR | Ruff, mypy, pytest |
+| **Docker Publish** | Push to `main` or tag `v*` | Build multi-arch image → Docker Hub + sync README |
+
+**Required GitHub secrets:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
+
+---
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE).
+
+---
+
+<div align="center">
+
+**Built by [PerfSage](https://github.com/perfsage)** · *Generating value in performance analysis* ⚡
+
+[Docker Hub](https://hub.docker.com/r/perfsage/jmeter-analyser) · [GitHub](https://github.com/perfsage/jmeter-analyser) · [Report an issue](https://github.com/perfsage/jmeter-analyser/issues)
+
+</div>
