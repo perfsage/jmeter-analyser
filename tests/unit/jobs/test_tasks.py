@@ -148,3 +148,35 @@ async def test_ingest_task_bad_file(
     assert j is not None
     assert j.status == JobStatus.FAILED
     assert j.error_text is not None
+
+
+@pytest.mark.asyncio
+async def test_ingest_all_quarantined_file_marks_report_failed(
+    tmp_path: Path,
+    test_settings: Settings,
+    engine,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A CSV where every row fails validation must not end up READY."""
+    monkeypatch.setattr("perfsage.core.jobs.tasks.get_settings", lambda: test_settings)
+
+    # Header present, but every data row has a non-numeric elapsed value —
+    # every row is quarantined, zero rows parsed successfully.
+    bad_file = tmp_path / "bad.csv"
+    bad_file.write_text("timeStamp,elapsed,label,success\n1700000000000,notanumber,Home,true\n")
+
+    with get_session(engine) as session:
+        report = ReportRepo(session).create("bad", "bad.csv", 100)
+        job = JobRepo(session).create(report.id)
+
+    mock_redis = AsyncMock()
+    mock_redis.publish = AsyncMock()
+    ctx: dict = {"redis": mock_redis}
+
+    with pytest.raises(ValueError, match="(?i)no valid samples|all rows"):
+        await ingest_report_task(ctx, job.id, report.id, str(bad_file))
+
+    with get_session(engine) as session:
+        r = ReportRepo(session).get(report.id)
+    assert r is not None
+    assert r.status == ReportStatus.FAILED

@@ -68,6 +68,12 @@ async def ingest_report_task(
         else:
             parsed_rows, error_rows = load_xml_to_parquet(src, samples_path, quarantine_path)
 
+        if parsed_rows == 0:
+            raise ValueError(
+                f"No valid samples found in {src.name!r} — all {error_rows} row(s) failed "
+                "validation (check delimiter, headers, and timestamp/elapsed format)."
+            )
+
         with get_session(engine) as session:
             ReportRepo(session).update_stats(
                 report_id,
