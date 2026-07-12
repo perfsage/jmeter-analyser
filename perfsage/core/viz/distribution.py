@@ -54,7 +54,8 @@ def fig_latency_histogram(samples_path: Path, label: str | None = None) -> go.Fi
     p90 = float(elapsed.quantile(0.90, interpolation="linear") or 0.0)
     p99 = float(elapsed.quantile(0.99, interpolation="linear") or 0.0)
 
-    lo, hi = float(elapsed.min()), float(elapsed.max())
+    lo = float(elapsed.min())  # type: ignore[arg-type]
+    hi = float(elapsed.max())  # type: ignore[arg-type]
     n_bins = 50
     if hi <= lo:
         bin_edges = [lo, lo + 1.0]
@@ -71,7 +72,9 @@ def fig_latency_histogram(samples_path: Path, label: str | None = None) -> go.Fi
         .alias("_bin")
     )
     counts_df = binned.group_by("_bin").agg(pl.len().alias("count")).sort("_bin")
-    counts_by_bin = dict(zip(counts_df["_bin"].to_list(), counts_df["count"].to_list(), strict=True))
+    counts_by_bin = dict(
+        zip(counts_df["_bin"].to_list(), counts_df["count"].to_list(), strict=True)
+    )
     bin_centers = [(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(n_bins)]
     bin_counts = [counts_by_bin.get(i, 0) for i in range(n_bins)]
     bar_width = bin_edges[1] - bin_edges[0] if n_bins > 1 else 1.0
