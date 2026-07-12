@@ -58,3 +58,15 @@ def test_percentiles_fast_data(sample_parquet_fast: Path) -> None:
 def test_percentiles_slow_data(sample_parquet_slow: Path) -> None:
     result = compute_overall_percentiles(sample_parquet_slow)
     assert result["p50"] >= 5000
+
+
+def test_compute_overall_percentiles_empty_file_returns_zeros(tmp_path):
+    import polars as pl
+    from perfsage.core.analysis.percentiles import compute_overall_percentiles
+
+    empty = pl.DataFrame({"elapsed": pl.Series([], dtype=pl.Int64)})
+    path = tmp_path / "empty.parquet"
+    empty.write_parquet(path)
+
+    result = compute_overall_percentiles(path)
+    assert result == {"p50": 0.0, "p75": 0.0, "p90": 0.0, "p95": 0.0, "p99": 0.0, "p999": 0.0}

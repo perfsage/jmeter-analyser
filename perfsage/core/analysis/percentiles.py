@@ -47,6 +47,15 @@ def compute_percentiles(
 
 
 def compute_overall_percentiles(samples_path: Path) -> dict[str, float]:
-    """Return dict: p50, p75, p90, p95, p99, p999 for all labels combined."""
+    """Return dict: p50, p75, p90, p95, p99, p999 for all labels combined.
+
+    Returns all-zero values (never raises) if the samples file has no rows —
+    DuckDB's PERCENTILE_CONT over an empty table yields NULLs, not an error.
+    """
     df = compute_percentiles(samples_path, groupby_label=False)
-    return {col: float(df[col][0]) for col in ["p50", "p75", "p90", "p95", "p99", "p999"]}
+    if df.is_empty() or df["count"][0] == 0:
+        return {"p50": 0.0, "p75": 0.0, "p90": 0.0, "p95": 0.0, "p99": 0.0, "p999": 0.0}
+    return {
+        col: float(df[col][0]) if df[col][0] is not None else 0.0
+        for col in ["p50", "p75", "p90", "p95", "p99", "p999"]
+    }
