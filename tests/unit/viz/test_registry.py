@@ -21,3 +21,17 @@ def test_build_figures_json_serializes(sample_parquet: Path) -> None:
     assert "fig-rt-scatter" in figs
     assert figs["fig-rt-scatter"] is not None
     assert "data" in figs["fig-rt-scatter"]
+
+
+def test_build_figures_json_only_builds_requested_subset(sample_parquet):
+    from perfsage.core.viz.registry import build_figures_json
+
+    result = build_figures_json(sample_parquet, None, only={"fig-slo-gauges", "fig-apdex"})
+    assert set(result.keys()) == {"fig-slo-gauges", "fig-apdex"}
+
+
+def test_build_figures_json_only_none_builds_everything(sample_parquet):
+    from perfsage.core.viz.registry import EXPORT_FIGURES, build_figures_json
+
+    result = build_figures_json(sample_parquet, None)
+    assert set(result.keys()) == {fid for fid, _ in EXPORT_FIGURES}

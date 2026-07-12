@@ -27,6 +27,10 @@ class FileStore:
         """Return path for an aggregate file: data/parquet/{report_id}/agg_{agg_name}.parquet"""
         return self.data_dir / "parquet" / report_id / f"agg_{agg_name}.parquet"
 
+    def render_cache_path(self, report_id: str, cache_name: str) -> Path:
+        """Return path for a cached render payload: data/parquet/{report_id}/figs_{cache_name}.json"""
+        return self.data_dir / "parquet" / report_id / f"figs_{cache_name}.json"
+
     def export_path(self, report_id: str, fmt: str) -> Path:
         """Return path for an export file: data/exports/{report_id}.{fmt}"""
         return self.data_dir / "exports" / f"{report_id}.{fmt}"

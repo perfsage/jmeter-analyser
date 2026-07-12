@@ -52,8 +52,16 @@ def _safe_fig_obj(fn: Any, *args: Any, **kwargs: Any) -> Any:
         return None
 
 
-def build_figure_objects(samples_path: Path, slo_config: SLOConfig | None) -> dict[str, Any]:
-    """Return mapping of dom_id -> Plotly Figure or None."""
+def build_figure_objects(
+    samples_path: Path,
+    slo_config: SLOConfig | None,
+    only: set[str] | None = None,
+) -> dict[str, Any]:
+    """Return mapping of dom_id -> Plotly Figure or None.
+
+    If `only` is given, builds just those figure ids (skips the rest) — used
+    for lazily-loaded chart sections that don't need the full 29-chart set.
+    """
     from perfsage.core.viz.decomposition import (
         fig_latency_components,
         fig_per_label_small_multiples,
@@ -123,12 +131,17 @@ def build_figure_objects(samples_path: Path, slo_config: SLOConfig | None) -> di
         "fig-variability": lambda: fig_variability_chart(samples_path),
     }
 
-    return {fid: _safe_fig_obj(builders[fid]) for fid, _ in EXPORT_FIGURES if fid in builders}
+    ids_to_build = [fid for fid, _ in EXPORT_FIGURES if only is None or fid in only]
+    return {fid: _safe_fig_obj(builders[fid]) for fid in ids_to_build if fid in builders}
 
 
-def build_figures_json(samples_path: Path, slo_config: SLOConfig | None) -> dict[str, Any]:
+def build_figures_json(
+    samples_path: Path,
+    slo_config: SLOConfig | None,
+    only: set[str] | None = None,
+) -> dict[str, Any]:
     """Return mapping of dom_id -> Plotly JSON dict for web templates."""
-    objs = build_figure_objects(samples_path, slo_config)
+    objs = build_figure_objects(samples_path, slo_config, only=only)
     result: dict[str, Any] = {}
     for fig_id, fig in objs.items():
         if fig is None:
