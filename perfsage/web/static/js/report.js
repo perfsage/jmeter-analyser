@@ -1,6 +1,29 @@
 (function () {
   "use strict";
 
+  window.PerfSageReport = window.PerfSageReport || {};
+
+  window.PerfSageReport.mountFigures = function (jsonScriptEl) {
+    if (!jsonScriptEl) return;
+    var figs;
+    try {
+      figs = JSON.parse(jsonScriptEl.textContent);
+    } catch (e) {
+      console.error("PerfSage: failed to parse figures JSON", e);
+      return;
+    }
+    for (var divId in figs) {
+      var figJson = figs[divId];
+      var el = document.getElementById(divId);
+      if (figJson && el) {
+        Plotly.newPlot(el, figJson.data, figJson.layout, {
+          responsive: true,
+          displayModeBar: true,
+        });
+      }
+    }
+  };
+
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".chart-tabs").forEach(function (tabs) {
       var buttons = tabs.querySelectorAll(".chart-tab-btn");

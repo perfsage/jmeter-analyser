@@ -220,13 +220,8 @@
   </div>
 </section>
 
+<script type="application/json" id="figures-data">{{ figures_json | safe }}</script>
 <script>
-var figs = {{ figures_json | safe }};
-for (var divId in figs) {
-  var figJson = figs[divId];
-  if (figJson && document.getElementById(divId)) {
-    Plotly.newPlot(divId, figJson.data, figJson.layout, {responsive: true, displayModeBar: true});
-  }
-}
+PerfSageReport.mountFigures(document.getElementById("figures-data"));
 </script>
 {% endblock %}

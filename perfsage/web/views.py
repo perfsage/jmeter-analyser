@@ -28,6 +28,20 @@ def _engine(settings: Settings) -> Any:
     return get_engine(settings.database_url)
 
 
+def _dumps_for_script_island(payload: Any) -> str:
+    """json.dumps, with every "<" escaped so the payload is safe to embed
+    inside a <script type="application/json"> element.
+
+    The HTML tokenizer ends ANY <script> element on the literal byte sequence
+    "</script" regardless of its type attribute, so a JMeter label containing
+    that sequence would otherwise still break out of the script island and be
+    parsed as HTML/script — the type="application/json" attribute alone does
+    not prevent this. "\\u003c" is a valid JSON escape for "<" that JSON.parse
+    decodes transparently but the HTML tokenizer never recognizes as a tag.
+    """
+    return json.dumps(payload).replace("<", "\\u003c")
+
+
 def reports_list_context(
     engine: Any,
     *,
@@ -138,7 +152,7 @@ async def report_detail(
         "report_detail.html",
         {
             "report": report,
-            "figures_json": json.dumps(figures_json),
+            "figures_json": _dumps_for_script_island(figures_json),
             "recommendations": recommendations,
             "summary_stats": summary_stats,
             "ai_insights_html": ai_insights_html,

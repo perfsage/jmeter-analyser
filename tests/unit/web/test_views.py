@@ -78,3 +78,38 @@ def test_settings_page_reflects_saved_slo_defaults(client: TestClient) -> None:
     assert r2.status_code == 200
     assert "250" in r2.text
     assert "800" in r2.text
+
+
+def test_report_detail_escapes_malicious_label(
+    client: TestClient, test_settings, tmp_path
+) -> None:
+    import polars as pl
+    from perfsage.core.storage.db import ReportStatus, get_engine, get_session
+    from perfsage.core.storage.repos import ReportRepo
+    from perfsage.core.storage.files import FileStore
+
+    engine = get_engine(test_settings.database_url)
+    with get_session(engine) as session:
+        report = ReportRepo(session).create("xss.csv", "xss.csv", 10)
+        ReportRepo(session).update_stats(
+            report.id, status=ReportStatus.READY, parsed_row_count=1, row_count=1
+        )
+        report_id = report.id
+
+    file_store = FileStore(test_settings.data_dir)
+    samples_path = file_store.samples_parquet(report_id)
+    samples_path.parent.mkdir(parents=True, exist_ok=True)
+    malicious_label = "x</script><script>window.__pwned=1</script>"
+    pl.DataFrame(
+        {
+            "timestamp_ms": [1_700_000_000_000],
+            "elapsed": [100],
+            "label": [malicious_label],
+            "success": [True],
+        }
+    ).write_parquet(samples_path)
+
+    r = client.get(f"/reports/{report_id}")
+    assert r.status_code == 200
+    assert "<script>window.__pwned" not in r.text
+    assert "</script><script>" not in r.text
