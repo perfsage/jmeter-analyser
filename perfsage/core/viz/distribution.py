@@ -151,25 +151,46 @@ def fig_latency_cdf(samples_path: Path) -> go.Figure:
 
 
 def fig_boxplots_per_label(samples_path: Path) -> go.Figure:
-    """Fig 8: Box plots per transaction label, sorted by median descending."""
+    """Fig 8: Box plots per transaction label, sorted by median descending.
+
+    Computes quartile/whisker/outlier statistics server-side and passes them
+    directly to go.Box — same rendered shape as a raw-array box plot, without
+    shipping every raw sample to the browser.
+    """
     df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Response Time Distribution by Label")
 
-    medians = (
+    stats = (
         df.group_by("label")
-        .agg(pl.col("elapsed").median().alias("median"))
+        .agg(
+            [
+                pl.col("elapsed").median().alias("median"),
+                pl.col("elapsed").quantile(0.25, interpolation="linear").alias("q1"),
+                pl.col("elapsed").quantile(0.75, interpolation="linear").alias("q3"),
+                pl.col("elapsed").min().alias("min_val"),
+                pl.col("elapsed").max().alias("max_val"),
+                pl.col("elapsed").mean().alias("mean"),
+            ]
+        )
         .sort("median", descending=True)
     )
-    labels_sorted = medians["label"].to_list()
 
     fig = go.Figure()
-    for lbl in labels_sorted:
-        subset = df.filter(pl.col("label") == lbl)["elapsed"].to_list()
+    for row in stats.to_dicts():
+        q1, q3 = float(row["q1"]), float(row["q3"])
+        iqr = q3 - q1
+        lower_fence = max(float(row["min_val"]), q1 - 1.5 * iqr)
+        upper_fence = min(float(row["max_val"]), q3 + 1.5 * iqr)
         fig.add_trace(
             go.Box(
-                y=subset,
-                name=str(lbl),
+                name=str(row["label"]),
+                q1=[q1],
+                median=[float(row["median"])],
+                q3=[q3],
+                lowerfence=[lower_fence],
+                upperfence=[upper_fence],
+                mean=[float(row["mean"])],
                 marker_color=NAVY,
                 line_color=NAVY,
                 boxmean=True,

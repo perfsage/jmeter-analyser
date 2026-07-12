@@ -191,6 +191,17 @@ def test_fig_boxplots_per_label_sorted_by_median(sample_parquet_slow: Path) -> N
     assert len(fig.data) >= 1
 
 
+def test_fig_boxplots_per_label_payload_has_no_raw_y_arrays(sample_parquet):
+    fig = fig_boxplots_per_label(sample_parquet)
+    assert len(fig.data) >= 1
+    for trace in fig.data:
+        # Quartile-stat boxes carry q1/median/q3 as scalars, not a raw y= array.
+        assert trace.y is None or len(trace.y) == 0
+        assert trace.q1 is not None
+        assert trace.median is not None
+        assert trace.q3 is not None
+
+
 # ---------------------------------------------------------------------------
 # Fig 9 — RT Heatmap
 # ---------------------------------------------------------------------------
