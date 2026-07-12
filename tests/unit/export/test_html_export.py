@@ -25,6 +25,66 @@ def test_html_export_footer_helper() -> None:
     assert "<footer" not in html
 
 
+def test_dumps_for_script_island_escapes_script_breakout() -> None:
+    from perfsage.core.export.html import _dumps_for_script_island
+
+    payload = {"label": "x</script><script>alert(1)</script>"}
+    encoded = _dumps_for_script_island(payload)
+    assert "</script>" not in encoded
+    assert "<script>" not in encoded
+
+    import json
+
+    assert json.loads(encoded) == payload
+
+
+def test_generate_html_report_escapes_malicious_report_name(tmp_path: Path) -> None:
+    from perfsage.core.export.html import generate_html_report
+
+    output = tmp_path / "report.html"
+    malicious_name = "x</script><script>window.__pwned=1</script>"
+    generate_html_report(Path("/nonexistent.parquet"), malicious_name, output)
+    content = output.read_text()
+    assert "<script>window.__pwned" not in content
+    assert "&lt;script&gt;" in content
+
+
+def test_generate_html_report_escapes_malicious_label(tmp_path: Path) -> None:
+    import polars as pl
+
+    from perfsage.core.export.html import generate_html_report
+
+    samples_path = tmp_path / "samples.parquet"
+    malicious_label = "x</script><script>window.__pwned=1</script>"
+    pl.DataFrame(
+        {
+            "timestamp_ms": [1_700_000_000_000],
+            "elapsed": [100],
+            "label": [malicious_label],
+            "response_code": ["200"],
+            "response_message": ["OK"],
+            "thread_name": ["Thread-1"],
+            "success": [True],
+            "failure_message": [""],
+            "bytes": [1024],
+            "sent_bytes": [256],
+            "grp_threads": [10],
+            "all_threads": [10],
+            "url": ["http://example.com"],
+            "latency": [90],
+            "idle_time": [0],
+            "connect": [10],
+        }
+    ).write_parquet(samples_path)
+
+    output = tmp_path / "report.html"
+    generate_html_report(samples_path, "Test", output)
+    content = output.read_text()
+    assert "<script>window.__pwned" not in content
+    assert "</script><script>" not in content
+    assert "&lt;script&gt;" in content
+
+
 @pytest.mark.slow
 def test_generate_html_report_full(tmp_path: Path, sample_parquet: Path) -> None:
     """Single integration test covering HTML export structure (29 charts + inline Plotly)."""

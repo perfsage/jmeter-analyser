@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import base64
+import html as html_escape
+import json
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from perfsage.core.analysis.metrics import compute_label_summary
 from perfsage.core.analysis.percentiles import compute_overall_percentiles
@@ -39,6 +42,20 @@ _SEVERITY_CSS: dict[InsightSeverity, str] = {
 }
 
 
+def _dumps_for_script_island(payload: Any) -> str:
+    """json.dumps, with every "<" escaped so the payload is safe to embed
+    directly inside an executable <script> block.
+
+    Browsers terminate a <script> element on the literal byte sequence
+    "</script" regardless of any attributes on the tag, so a JMeter label
+    like "x</script><script>...</script>" can break out of the script
+    context even with type="application/json". "\\u003c" is a valid JSON
+    escape for "<" that JSON.parse decodes transparently but the HTML
+    tokenizer never recognizes as the start of a tag.
+    """
+    return json.dumps(payload).replace("<", "\\u003c")
+
+
 def _logo_data_uri() -> str:
     try:
         raw = _LOGO_PATH.read_bytes()
@@ -57,9 +74,10 @@ def _render_summary_table(samples_path: Path) -> str:
         rows_html = ""
         for row in df.to_dicts():
             err_pct = float(row.get("error_rate") or 0) * 100
+            label = html_escape.escape(str(row.get("label", "")))
             rows_html += (
                 f"<tr>"
-                f"<td>{row.get('label', '')}</td>"
+                f"<td>{label}</td>"
                 f"<td>{int(row.get('count', 0)):,}</td>"
                 f"<td>{float(row.get('mean_elapsed', 0)):.0f}</td>"
                 f"<td>{float(row.get('p50', 0)):.0f}</td>"
@@ -116,9 +134,10 @@ def _render_recommendations(samples_path: Path, slo_config: SLOConfig | None) ->
         for rec in recs:
             style = _SEVERITY_CSS.get(rec.severity, "")
             badge = rec.severity.upper()
+            message = html_escape.escape(rec.message)
             items += (
                 f'<div style="{style};padding:0.75rem 1rem;border-radius:4px;margin-bottom:0.5rem">'
-                f"<strong>[{badge}]</strong> {rec.message}"
+                f"<strong>[{badge}]</strong> {message}"
                 f"</div>"
             )
         return f'<div class="card"><h3 style="margin-top:0">Recommendations</h3>{items}</div>'
@@ -146,6 +165,7 @@ def generate_html_report(
 ) -> Path:
     """Generate a complete standalone HTML report with embedded Plotly."""
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    safe_report_name = html_escape.escape(report_name)
 
     plotly_js = ""
     try:
@@ -181,7 +201,8 @@ def generate_html_report(
         fig = figure_objs.get(fig_id)
         if fig is not None:
             try:
-                fig_json = fig.to_json()
+                fig_spec = json.loads(fig.to_json())
+                fig_json = _dumps_for_script_island(fig_spec)
                 plot_scripts += (
                     f"(function(){{\n"
                     f"  var spec = {fig_json};\n"
@@ -204,7 +225,7 @@ def generate_html_report(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{report_name} \u2014 PerfSage Analysis</title>
+  <title>{safe_report_name} \u2014 PerfSage Analysis</title>
   <style>
 {_EXPORT_CSS}
   </style>
@@ -215,7 +236,7 @@ def generate_html_report(
     <span style="margin-left:auto;font-size:0.875rem">Generated {timestamp}</span>
   </nav>
   <main style="max-width:1280px;margin:0 auto;padding:2rem">
-    <h1 style="color:#0B1F3A;margin-bottom:0.5rem">{report_name}</h1>
+    <h1 style="color:#0B1F3A;margin-bottom:0.5rem">{safe_report_name}</h1>
     <p style="color:#64748B;margin-bottom:2rem;font-size:0.875rem">Performance Analysis Report</p>
 
     {not_available_banner}
