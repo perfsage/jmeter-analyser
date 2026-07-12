@@ -8,6 +8,19 @@
   --warn-yellow: #ECC94B;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body { background: var(--cream); color: var(--navy); font-family: var(--font-body); margin: 0; }
@@ -162,3 +175,35 @@ table.data-table tbody tr:nth-child(even) { background: #F7FAFC; }
 .export-footer { background: #0B1F3A; color: #F6F1E7; text-align: center; padding: 1.5rem; margin-top: 2rem; font-size: 0.875rem; }
 .export-footer a { color: #D4A857; text-decoration: none; font-weight: 600; }
 .export-footer img { height: 28px; vertical-align: middle; margin-right: 0.5rem; }
+
+/* Skeleton loading placeholders */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #EDF2F7;
+  border-radius: 6px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #EDF2F7 25%, #F7FAFC 37%, #EDF2F7 63%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s var(--ease-in-out) infinite;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.kpi-value.skeleton { height: 1.75rem; width: 60%; margin: 0.25rem auto 0; }
+.chart-skeleton { height: 340px; border-radius: 6px; }
+
+/* Chart fade-in once mounted (see report.js PerfSageReport.mountFigures) */
+.chart-card [id^="fig-"] {
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+  min-height: 340px;
+}
+.chart-card [id^="fig-"].chart-loaded {
+  opacity: 1;
+}
