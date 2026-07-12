@@ -58,9 +58,11 @@ def test_fig_latency_histogram_unknown_label(sample_parquet: Path) -> None:
     assert isinstance(fig, go.Figure)
 
 
-def test_fig_latency_histogram_first_trace_is_histogram(sample_parquet: Path) -> None:
+def test_fig_latency_histogram_first_trace_is_bar(sample_parquet: Path) -> None:
+    # Pre-binned server-side (see fig_latency_histogram docstring) — go.Bar
+    # renders the same visual shape as go.Histogram without shipping raw arrays.
     fig = fig_latency_histogram(sample_parquet)
-    assert type(fig.data[0]).__name__ == "Histogram"
+    assert type(fig.data[0]).__name__ == "Bar"
 
 
 def test_fig_latency_histogram_with_errors(sample_parquet_with_errors: Path) -> None:
@@ -69,6 +71,15 @@ def test_fig_latency_histogram_with_errors(sample_parquet_with_errors: Path) -> 
 
 def test_fig_latency_histogram_with_slow_data(sample_parquet_slow: Path) -> None:
     assert isinstance(fig_latency_histogram(sample_parquet_slow), go.Figure)
+
+
+def test_fig_latency_histogram_payload_is_binned_not_raw(sample_parquet_fast):
+    fig = fig_latency_histogram(sample_parquet_fast)
+    assert len(fig.data) >= 1
+    trace = fig.data[0]
+    # Binned output has at most ~50 points regardless of input row count;
+    # a raw-array histogram trace would carry one x-value per input row (200).
+    assert len(trace.x) <= 60
 
 
 # ---------------------------------------------------------------------------

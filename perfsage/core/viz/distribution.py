@@ -35,7 +35,11 @@ def _assign_rt_bucket(elapsed: pl.Expr) -> pl.Expr:
 
 
 def fig_latency_histogram(samples_path: Path, label: str | None = None) -> go.Figure:
-    """Fig 6: Histogram of elapsed times with p50/p90/p99 vertical lines."""
+    """Fig 6: Histogram of elapsed times with p50/p90/p99 vertical lines.
+
+    Pre-bins server-side (50 buckets) instead of shipping raw per-sample
+    arrays to Plotly — same visual output, O(bins) payload instead of O(n).
+    """
     df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Latency Histogram")
@@ -45,16 +49,39 @@ def fig_latency_histogram(samples_path: Path, label: str | None = None) -> go.Fi
     if df.is_empty():
         return apply_theme(go.Figure(), f"Latency Histogram — {label} (no data)")
 
-    elapsed = df["elapsed"].to_list()
-    p50 = float(df["elapsed"].quantile(0.50, interpolation="linear") or 0.0)
-    p90 = float(df["elapsed"].quantile(0.90, interpolation="linear") or 0.0)
-    p99 = float(df["elapsed"].quantile(0.99, interpolation="linear") or 0.0)
+    elapsed = df["elapsed"]
+    p50 = float(elapsed.quantile(0.50, interpolation="linear") or 0.0)
+    p90 = float(elapsed.quantile(0.90, interpolation="linear") or 0.0)
+    p99 = float(elapsed.quantile(0.99, interpolation="linear") or 0.0)
+
+    lo, hi = float(elapsed.min()), float(elapsed.max())
+    n_bins = 50
+    if hi <= lo:
+        bin_edges = [lo, lo + 1.0]
+        n_bins = 1
+    else:
+        width = (hi - lo) / n_bins
+        bin_edges = [lo + i * width for i in range(n_bins + 1)]
+
+    binned = df.with_columns(
+        ((pl.col("elapsed") - lo) / (bin_edges[1] - bin_edges[0]))
+        .floor()
+        .clip(0, n_bins - 1)
+        .cast(pl.Int64)
+        .alias("_bin")
+    )
+    counts_df = binned.group_by("_bin").agg(pl.len().alias("count")).sort("_bin")
+    counts_by_bin = dict(zip(counts_df["_bin"].to_list(), counts_df["count"].to_list(), strict=True))
+    bin_centers = [(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(n_bins)]
+    bin_counts = [counts_by_bin.get(i, 0) for i in range(n_bins)]
+    bar_width = bin_edges[1] - bin_edges[0] if n_bins > 1 else 1.0
 
     title = f"Latency Histogram{f' — {label}' if label else ''}"
     fig = go.Figure(
-        go.Histogram(
-            x=elapsed,
-            nbinsx=50,
+        go.Bar(
+            x=bin_centers,
+            y=bin_counts,
+            width=bar_width * 0.95,
             marker_color=NAVY,
             opacity=0.8,
             name="Requests",
@@ -75,7 +102,7 @@ def fig_latency_histogram(samples_path: Path, label: str | None = None) -> go.Fi
         )
 
     apply_theme(fig, title)
-    fig.update_layout(xaxis_title="Response Time (ms)", yaxis_title="Count")
+    fig.update_layout(xaxis_title="Response Time (ms)", yaxis_title="Count", bargap=0.02)
     return fig
 
 
