@@ -10,6 +10,7 @@ import polars as pl
 from plotly.subplots import make_subplots
 
 from perfsage.core.analysis.metrics import compute_rt_series
+from perfsage.core.viz._sample_cache import read_samples_cached
 from perfsage.core.viz._theme import AMBER, CREAM, NAVY, SUCCESS_GREEN, apply_theme
 from perfsage.core.viz._utils import time_bucket as _time_bucket
 
@@ -18,7 +19,7 @@ _MAX_LABELS = 12
 
 def fig_latency_components(samples_path: Path, bucket_seconds: int = 10) -> go.Figure:
     """Fig 14: Stacked area — connect, latency (TTFB), and transfer time per bucket."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Latency Components Over Time")
 
@@ -92,7 +93,7 @@ def fig_per_label_small_multiples(samples_path: Path) -> go.Figure:
         return apply_theme(go.Figure(), "Response Time by Label")
 
     # Top 12 labels by total request volume
-    df_raw = pl.read_parquet(samples_path)
+    df_raw = read_samples_cached(samples_path)
     top_labels_df = (
         df_raw.group_by("label")
         .agg(pl.len().alias("count"))

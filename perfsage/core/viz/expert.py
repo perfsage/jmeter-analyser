@@ -10,6 +10,7 @@ import polars as pl
 
 from perfsage.core.analysis.segmentation import detect_warmup_window
 from perfsage.core.analysis.slo import SLOConfig
+from perfsage.core.viz._sample_cache import read_samples_cached
 from perfsage.core.viz._theme import (
     AMBER,
     ERROR_RED,
@@ -40,7 +41,7 @@ def fig_sli_burn_rate_timeline(
     """Error rate % and p99 latency vs fixed SLO thresholds over time."""
     title = "SLI Burn Rate Timeline"
     cfg = slo_config or SLOConfig()
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), title)
 
@@ -112,7 +113,7 @@ def fig_sli_burn_rate_timeline(
 def fig_percentile_fan(samples_path: Path, bucket_seconds: int = 5) -> go.Figure:
     """p50–p99 percentile ribbon fan over time (nested fills)."""
     title = "Percentile Fan Over Time"
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), title)
 
@@ -174,7 +175,7 @@ def fig_percentile_fan(samples_path: Path, bucket_seconds: int = 5) -> go.Figure
 def fig_transaction_mix(samples_path: Path, bucket_seconds: int = 10) -> go.Figure:
     """Stacked area of transaction label share (%) over time."""
     title = "Transaction Mix Over Time"
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), title)
 
@@ -233,7 +234,7 @@ def _stratified_sample(df: pl.DataFrame, sample_limit: int) -> pl.DataFrame:
 def fig_outlier_scatter(samples_path: Path, sample_limit: int = 5000) -> go.Figure:
     """Scatter of latency vs time; IQR outliers highlighted per label."""
     title = "Outlier Scatter (IQR)"
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), title)
 
@@ -297,7 +298,7 @@ def fig_outlier_scatter(samples_path: Path, sample_limit: int = 5000) -> go.Figu
 def fig_connect_breakdown(samples_path: Path, bucket_seconds: int = 10) -> go.Figure:
     """Stacked mean connect, latency, and idle components over time."""
     title = "Latency Component Breakdown"
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), title)
 
@@ -342,7 +343,7 @@ def fig_connect_breakdown(samples_path: Path, bucket_seconds: int = 10) -> go.Fi
 def fig_throughput_efficiency(samples_path: Path, bucket_seconds: int = 10) -> go.Figure:
     """Total bytes transferred per cumulative ms elapsed (aggregate bytes/ms) over time."""
     title = "Throughput Efficiency"
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), title)
 
@@ -388,7 +389,7 @@ def fig_throughput_efficiency(samples_path: Path, bucket_seconds: int = 10) -> g
 def fig_steady_state_compare(samples_path: Path) -> go.Figure:
     """Grouped bars: warmup vs steady p90/p99 latencies."""
     title = "Warmup vs Steady State"
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), title)
 
@@ -431,7 +432,7 @@ def fig_steady_state_compare(samples_path: Path) -> go.Figure:
 def fig_threads_error_heatmap(samples_path: Path) -> go.Figure:
     """2D heatmap: time-bucket mean thread count vs error-rate magnitude (sample counts per cell)."""
     title = "Threads vs Error Rate"
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), title)
 

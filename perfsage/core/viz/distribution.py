@@ -7,6 +7,7 @@ from pathlib import Path
 import plotly.graph_objects as go
 import polars as pl
 
+from perfsage.core.viz._sample_cache import read_samples_cached
 from perfsage.core.viz._theme import AMBER, ERROR_RED, NAVY, WARN_YELLOW, apply_theme
 
 # Log-scale RT bucket edges (ms) and their display labels
@@ -35,7 +36,7 @@ def _assign_rt_bucket(elapsed: pl.Expr) -> pl.Expr:
 
 def fig_latency_histogram(samples_path: Path, label: str | None = None) -> go.Figure:
     """Fig 6: Histogram of elapsed times with p50/p90/p99 vertical lines."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Latency Histogram")
 
@@ -80,7 +81,7 @@ def fig_latency_histogram(samples_path: Path, label: str | None = None) -> go.Fi
 
 def fig_latency_cdf(samples_path: Path) -> go.Figure:
     """Fig 7: Cumulative distribution function with p90/p95/p99 reference lines."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Latency CDF")
 
@@ -124,7 +125,7 @@ def fig_latency_cdf(samples_path: Path) -> go.Figure:
 
 def fig_boxplots_per_label(samples_path: Path) -> go.Figure:
     """Fig 8: Box plots per transaction label, sorted by median descending."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Response Time Distribution by Label")
 
@@ -155,7 +156,7 @@ def fig_boxplots_per_label(samples_path: Path) -> go.Figure:
 
 def fig_rt_heatmap(samples_path: Path, bucket_seconds: int = 30) -> go.Figure:
     """Fig 9: 2-D heatmap — X: time bucket, Y: log-scale RT bucket, Color: request density."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Response Time Heatmap")
 

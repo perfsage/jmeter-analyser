@@ -11,6 +11,7 @@ from perfsage.core.analysis.metrics import (
     compute_bytes_series,
     compute_throughput_series,
 )
+from perfsage.core.viz._sample_cache import read_samples_cached
 from perfsage.core.viz._theme import (
     AMBER,
     ERROR_RED,
@@ -23,7 +24,7 @@ from perfsage.core.viz._utils import time_bucket as _time_bucket
 
 def fig_rt_over_time(samples_path: Path, bucket_seconds: int = 5) -> go.Figure:
     """Fig 1: Response time over time with p50/p90/p95/p99 lines and anomaly markers."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Response Time Over Time")
 
@@ -150,7 +151,7 @@ def fig_throughput_over_time(samples_path: Path, bucket_seconds: int = 5) -> go.
 
 def fig_errors_over_time(samples_path: Path, bucket_seconds: int = 5) -> go.Figure:
     """Fig 3: Error count stacked by response_code + error rate % line."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Errors Over Time")
 
@@ -226,7 +227,7 @@ def fig_errors_over_time(samples_path: Path, bucket_seconds: int = 5) -> go.Figu
 
 def fig_threads_vs_rt(samples_path: Path, bucket_seconds: int = 5) -> go.Figure:
     """Fig 4: Active threads (primary y) vs p90 RT (secondary y) — dual axis."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Threads vs Response Time")
 

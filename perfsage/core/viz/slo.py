@@ -10,6 +10,7 @@ from plotly.subplots import make_subplots
 
 from perfsage.core.analysis.percentiles import compute_overall_percentiles
 from perfsage.core.analysis.slo import SLOConfig, compute_apdex
+from perfsage.core.viz._sample_cache import read_samples_cached
 from perfsage.core.viz._theme import (
     CREAM,
     ERROR_RED,
@@ -36,7 +37,7 @@ def fig_slo_gauges(
     if slo_config is None:
         slo_config = SLOConfig()
 
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "KPI Gauges")
 
@@ -187,7 +188,7 @@ def fig_apdex_by_label(samples_path: Path, t_seconds: float = 0.5) -> go.Figure:
 
 def fig_error_sunburst(samples_path: Path) -> go.Figure:
     """Fig 19: Sunburst — inner ring: response_code, outer ring: label (errors only)."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Error Distribution")
 

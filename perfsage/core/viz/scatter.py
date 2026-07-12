@@ -10,6 +10,7 @@ import polars as pl
 
 from perfsage.core.analysis.anomalies import detect_knee_point
 from perfsage.core.analysis.metrics import compute_correlation_matrix
+from perfsage.core.viz._sample_cache import read_samples_cached
 from perfsage.core.viz._theme import AMBER, ERROR_RED, LABEL_COLORS, NAVY, apply_theme
 from perfsage.core.viz._utils import time_bucket as _time_bucket
 
@@ -18,7 +19,7 @@ _SAMPLE_LIMIT = 50_000
 
 def fig_rt_vs_throughput(samples_path: Path, bucket_seconds: int = 10) -> go.Figure:
     """Fig 10: p90 RT vs RPS scatter, color by test progress, knee point marked."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "RT vs Throughput")
 
@@ -93,7 +94,7 @@ def fig_rt_vs_throughput(samples_path: Path, bucket_seconds: int = 10) -> go.Fig
 
 def fig_rt_vs_concurrency(samples_path: Path, bucket_seconds: int = 10) -> go.Figure:
     """Fig 11: p90 RT vs active thread count scatter, colored by test progress."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "RT vs Concurrency")
 
@@ -135,7 +136,7 @@ def fig_rt_vs_concurrency(samples_path: Path, bucket_seconds: int = 10) -> go.Fi
 
 def fig_rt_vs_time_by_status(samples_path: Path) -> go.Figure:
     """Fig 12: Raw scatter of elapsed vs timestamp, colored by response status."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Response Time by Status")
 
@@ -184,7 +185,7 @@ def fig_rt_vs_time_by_status(samples_path: Path) -> go.Figure:
 def fig_rt_scatter_by_label(samples_path: Path, sample_limit: int = 5000) -> go.Figure:
     """Scatter of elapsed vs time, one trace per label with proportional stratified sampling."""
     title = "Response Time Scatter by Transaction"
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), title)
 

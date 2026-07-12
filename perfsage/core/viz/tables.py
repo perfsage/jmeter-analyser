@@ -7,6 +7,7 @@ from pathlib import Path
 import plotly.graph_objects as go
 import polars as pl
 
+from perfsage.core.viz._sample_cache import read_samples_cached
 from perfsage.core.viz._theme import AMBER, CREAM, ERROR_RED, NAVY, WHITE, apply_theme
 
 _URL_MAX_LEN = 60
@@ -14,7 +15,7 @@ _URL_MAX_LEN = 60
 
 def fig_slowest_transactions(samples_path: Path, top_n: int = 20) -> go.Figure:
     """Fig 18: Plotly Table — top N slowest individual transactions."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Slowest Transactions")
 
@@ -63,7 +64,7 @@ def fig_slowest_transactions(samples_path: Path, top_n: int = 20) -> go.Figure:
 
 def fig_variability_chart(samples_path: Path) -> go.Figure:
     """Fig 20: Coefficient of variation (std/mean) bar chart per label, sorted by CV."""
-    df = pl.read_parquet(samples_path)
+    df = read_samples_cached(samples_path)
     if df.is_empty():
         return apply_theme(go.Figure(), "Response Time Variability")
 
