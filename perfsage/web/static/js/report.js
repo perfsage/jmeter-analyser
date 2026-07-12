@@ -15,12 +15,13 @@
     for (var divId in figs) {
       var figJson = figs[divId];
       var el = document.getElementById(divId);
-      if (figJson && el) {
-        Plotly.newPlot(el, figJson.data, figJson.layout, {
-          responsive: true,
-          displayModeBar: true,
-        });
-      }
+      if (!figJson || !el) continue;
+      Plotly.newPlot(el, figJson.data, figJson.layout, {
+        responsive: true,
+        displayModeBar: true,
+      }).then(function (gd) {
+        gd.classList.add("chart-loaded");
+      });
     }
   };
 
