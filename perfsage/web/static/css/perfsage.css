@@ -221,3 +221,27 @@ table.data-table tbody tr:nth-child(even) { background: #F7FAFC; }
   transition: width var(--dur-slow) var(--ease-out), opacity var(--dur-fast) linear;
 }
 #htmx-top-bar.is-active { opacity: 1; }
+
+/* Button/form busy state (HTMX auto-adds .htmx-request to the triggering element) */
+.btn-primary.htmx-request,
+.btn-amber.htmx-request,
+.btn-outline.htmx-request {
+  opacity: 0.7;
+  cursor: wait;
+  pointer-events: none;
+}
+.btn-primary.htmx-request::after,
+.btn-amber.htmx-request::after,
+.btn-outline.htmx-request::after {
+  content: "";
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-left: 0.5em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.6s linear infinite;
+  vertical-align: -0.15em;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }

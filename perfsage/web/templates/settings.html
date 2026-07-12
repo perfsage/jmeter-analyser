@@ -8,7 +8,7 @@
   <p style="font-size:0.875rem;color:#718096;margin-bottom:1.5rem">
     Configure an AI provider key to enable AI-powered analysis. Keys are encrypted at rest.
   </p>
-  <form hx-post="/api/settings/ai-key" hx-target="#settings-result" hx-swap="innerHTML">
+  <form hx-post="/api/settings/ai-key" hx-target="#settings-result" hx-swap="innerHTML" hx-disabled-elt="this">
     <div style="margin-bottom:1rem">
       <label style="font-weight:500">Provider</label><br>
       <select name="provider" style="margin-top:0.25rem;padding:0.5rem;border:1.5px solid #CBD5E0;border-radius:6px;width:200px">
@@ -37,7 +37,7 @@
 
 <div class="card">
   <h2 style="margin-bottom:1rem">SLO Defaults</h2>
-  <form hx-post="/api/settings/slo" hx-target="#slo-result" hx-swap="innerHTML">
+  <form hx-post="/api/settings/slo" hx-target="#slo-result" hx-swap="innerHTML" hx-disabled-elt="this">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;max-width:480px">
       <div>
         <label style="font-size:0.875rem;font-weight:500">P90 threshold (ms)</label><br>

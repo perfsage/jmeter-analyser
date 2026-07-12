@@ -7,7 +7,8 @@
     <form hx-post="/api/reports/flush?keep_recent=5"
           hx-target="#reports-table"
           hx-swap="innerHTML"
-          hx-confirm="Remove all reports except the 5 most recent? This cannot be undone.">
+          hx-confirm="Remove all reports except the 5 most recent? This cannot be undone."
+          hx-disabled-elt="this">
       <button type="submit" class="btn-outline" style="color:#c53030;border-color:#c53030">
         Flush old reports
       </button>
