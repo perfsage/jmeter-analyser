@@ -113,3 +113,77 @@ def test_report_detail_escapes_malicious_label(
     assert r.status_code == 200
     assert "<script>window.__pwned" not in r.text
     assert "</script><script>" not in r.text
+
+
+def test_report_section_distribution_returns_only_its_charts(
+    client: TestClient, test_settings
+) -> None:
+    import polars as pl
+    from perfsage.core.storage.db import ReportStatus, get_engine, get_session
+    from perfsage.core.storage.repos import ReportRepo
+    from perfsage.core.storage.files import FileStore
+
+    engine = get_engine(test_settings.database_url)
+    with get_session(engine) as session:
+        report = ReportRepo(session).create("r.csv", "r.csv", 10)
+        ReportRepo(session).update_stats(
+            report.id, status=ReportStatus.READY, parsed_row_count=3, row_count=3
+        )
+        report_id = report.id
+
+    file_store = FileStore(test_settings.data_dir)
+    samples_path = file_store.samples_parquet(report_id)
+    samples_path.parent.mkdir(parents=True, exist_ok=True)
+    pl.DataFrame(
+        {
+            "timestamp_ms": [1_700_000_000_000, 1_700_000_001_000, 1_700_000_002_000],
+            "elapsed": [100, 200, 300],
+            "label": ["Home", "Home", "API"],
+            "success": [True, True, True],
+        }
+    ).write_parquet(samples_path)
+
+    r = client.get(f"/reports/{report_id}/section/distribution")
+    assert r.status_code == 200
+    assert "fig-histogram" in r.text
+    assert "fig-rt-throughput" not in r.text  # that's the saturation section, not this one
+
+
+def test_report_section_unknown_id_returns_404(client: TestClient) -> None:
+    r = client.get("/reports/nonexistent/section/not-a-real-section")
+    assert r.status_code == 404
+
+
+def test_report_detail_no_longer_inlines_distribution_charts(
+    client: TestClient, test_settings
+) -> None:
+    import polars as pl
+    from perfsage.core.storage.db import ReportStatus, get_engine, get_session
+    from perfsage.core.storage.repos import ReportRepo
+    from perfsage.core.storage.files import FileStore
+
+    engine = get_engine(test_settings.database_url)
+    with get_session(engine) as session:
+        report = ReportRepo(session).create("r2.csv", "r2.csv", 10)
+        ReportRepo(session).update_stats(
+            report.id, status=ReportStatus.READY, parsed_row_count=2, row_count=2
+        )
+        report_id = report.id
+
+    file_store = FileStore(test_settings.data_dir)
+    samples_path = file_store.samples_parquet(report_id)
+    samples_path.parent.mkdir(parents=True, exist_ok=True)
+    pl.DataFrame(
+        {
+            "timestamp_ms": [1_700_000_000_000, 1_700_000_001_000],
+            "elapsed": [100, 200],
+            "label": ["Home", "Home"],
+            "success": [True, True],
+        }
+    ).write_parquet(samples_path)
+
+    r = client.get(f"/reports/{report_id}")
+    assert r.status_code == 200
+    assert 'hx-get="/reports/{}/section/distribution"'.format(report_id) in r.text
+    # The initial response must not have already computed the histogram JSON inline.
+    assert '"fig-histogram":' not in r.text

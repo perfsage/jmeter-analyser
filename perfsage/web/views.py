@@ -16,12 +16,29 @@ from perfsage.core.ai.markdown_render import render_ai_markdown
 from perfsage.core.analysis.slo import SLOConfig, load_slo_config
 from perfsage.core.storage.db import ReportStatus, get_engine, get_session
 from perfsage.core.storage.repos import AppSettingsRepo, InsightRepo, ReportRepo
-from perfsage.core.viz.registry import build_figures_json
+from perfsage.core.viz.registry import EXPORT_FIGURES, build_figures_json
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+LAZY_SECTION_CHARTS: dict[str, list[tuple[str, str, str]]] = {
+    "distribution": [
+        ("fig-histogram", "Latency Histogram", "Overall response time distribution."),
+        ("fig-cdf", "Latency CDF", "Cumulative probability of response times."),
+        ("fig-boxplots", "Boxplots per Label", "Per-transaction spread and outliers."),
+        ("fig-heatmap", "RT Heatmap", "Time vs label intensity map."),
+        ("fig-outlier-scatter", "IQR Outliers", "Samples beyond 1.5×IQR fences."),
+        ("fig-variability", "Variability", "Coefficient of variation by label."),
+    ],
+    "saturation": [
+        ("fig-rt-throughput", "RT vs Throughput", "Find the knee where latency spikes."),
+        ("fig-rt-concurrency", "RT vs Concurrency", "Latency under increasing load."),
+        ("fig-correlation", "Correlation Matrix", "Metric interdependencies."),
+        ("fig-threads-error-heatmap", "Threads vs Errors", "Failure density under load."),
+    ],
+}
 
 
 def _engine(settings: Settings) -> Any:
@@ -131,7 +148,14 @@ async def report_detail(
     summary_stats: list[dict[str, str]] = []
 
     if samples_path.exists() and report.status == ReportStatus.READY:
-        figures_json = build_figures_json(samples_path, slo_config)
+        from perfsage.core.viz.render_cache import get_or_build_json
+
+        lazy_ids = {cid for charts in LAZY_SECTION_CHARTS.values() for cid, _, _ in charts}
+        inline_ids = {fid for fid, _ in EXPORT_FIGURES} - lazy_ids
+        cache_path = file_store.render_cache_path(report_id, "main")
+        figures_json = get_or_build_json(
+            cache_path, lambda: build_figures_json(samples_path, slo_config, only=inline_ids)
+        )
         try:
             from perfsage.core.analysis.recommendations import run_all_recommendations
 
@@ -159,6 +183,46 @@ async def report_detail(
             "ai_insights_raw": ai_insights_raw,
             "ai_key_configured": ai_key_configured,
         },
+    )
+
+
+@router.get("/reports/{report_id}/section/{section_id}", response_class=HTMLResponse)
+async def report_section(
+    report_id: str,
+    section_id: str,
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> HTMLResponse:
+    from perfsage.core.storage.files import FileStore
+    from perfsage.core.viz.render_cache import get_or_build_json
+
+    charts = LAZY_SECTION_CHARTS.get(section_id)
+    if charts is None:
+        return HTMLResponse("Unknown section", status_code=404)
+
+    engine = _engine(settings)
+    file_store = FileStore(settings.data_dir)
+
+    with get_session(engine) as session:
+        report = ReportRepo(session).get(report_id)
+        if report is None or report.status != ReportStatus.READY:
+            return HTMLResponse("Report not ready", status_code=404)
+        slo_config = load_slo_config(session)
+
+    samples_path = file_store.samples_parquet(report_id)
+    if not samples_path.exists():
+        return HTMLResponse("Report data not found", status_code=404)
+
+    chart_ids = {cid for cid, _, _ in charts}
+    cache_path = file_store.render_cache_path(report_id, section_id)
+    figures_json = get_or_build_json(
+        cache_path, lambda: build_figures_json(samples_path, slo_config, only=chart_ids)
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "partials/lazy_section_charts.html",
+        {"charts": charts, "figures_json": _dumps_for_script_island(figures_json)},
     )
 
 

@@ -1,0 +1,13 @@
+<div class="chart-grid-2">
+  {% for chart_id, title, caption in charts %}
+  <div class="card chart-card">
+    <h3 class="chart-card-title">{{ title }}</h3>
+    <p class="chart-caption">{{ caption }}</p>
+    <div id="{{ chart_id }}"></div>
+  </div>
+  {% endfor %}
+</div>
+<script type="application/json" class="figures-data-fragment">{{ figures_json | safe }}</script>
+<script>
+PerfSageReport.mountFigures(document.currentScript.previousElementSibling);
+</script>

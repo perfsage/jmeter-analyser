@@ -128,7 +128,10 @@
     <span class="section-chevron">&#9660;</span>
     <h2>Distribution &amp; Tails</h2>
   </button>
-  <div class="report-section-body">
+  <div class="report-section-body"
+       hx-get="/reports/{{ report.id }}/section/distribution"
+       hx-trigger="revealed"
+       hx-swap="innerHTML">
     <div class="chart-grid-2">
       {% for chart_id, title, caption in [
         ('fig-histogram', 'Latency Histogram', 'Overall response time distribution.'),
@@ -141,7 +144,7 @@
       <div class="card chart-card">
         <h3 class="chart-card-title">{{ title }}</h3>
         <p class="chart-caption">{{ caption }}</p>
-        <div id="{{ chart_id }}"></div>
+        <div class="skeleton chart-skeleton"></div>
       </div>
       {% endfor %}
     </div>
@@ -154,7 +157,10 @@
     <span class="section-chevron">&#9660;</span>
     <h2>Saturation &amp; Correlation</h2>
   </button>
-  <div class="report-section-body">
+  <div class="report-section-body"
+       hx-get="/reports/{{ report.id }}/section/saturation"
+       hx-trigger="revealed"
+       hx-swap="innerHTML">
     <div class="chart-grid-2">
       {% for chart_id, title, caption in [
         ('fig-rt-throughput', 'RT vs Throughput', 'Find the knee where latency spikes.'),
@@ -165,7 +171,7 @@
       <div class="card chart-card">
         <h3 class="chart-card-title">{{ title }}</h3>
         <p class="chart-caption">{{ caption }}</p>
-        <div id="{{ chart_id }}"></div>
+        <div class="skeleton chart-skeleton"></div>
       </div>
       {% endfor %}
     </div>
