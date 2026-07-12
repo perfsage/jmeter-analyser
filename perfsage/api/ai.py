@@ -14,6 +14,7 @@ from perfsage.core.ai._crypto import decrypt_key
 from perfsage.core.ai.client import get_client
 from perfsage.core.ai.markdown_render import render_ai_markdown
 from perfsage.core.ai.prompts import SYSTEM_PROMPT, build_analysis_prompt
+from perfsage.core.analysis.slo import load_slo_config
 from perfsage.core.storage.db import InsightSeverity, get_engine, get_session
 from perfsage.core.storage.files import FileStore
 from perfsage.core.storage.repos import AppSettingsRepo, InsightRepo, ReportRepo
@@ -64,6 +65,7 @@ async def generate_ai_insights(
             return _render_ai_html(request, existing.message)
 
         settings_repo = AppSettingsRepo(session)
+        slo_config = load_slo_config(session)
         provider: str | None = None
         api_key: str | None = None
         for p in ("openai", "anthropic", "gemini"):
@@ -86,7 +88,7 @@ async def generate_ai_insights(
             "Re-upload the file to regenerate.</div>"
         )
 
-    user_prompt = build_analysis_prompt(samples_path)
+    user_prompt = build_analysis_prompt(samples_path, slo_config)
     if not user_prompt.strip():
         return HTMLResponse(
             '<div style="color:#E53E3E">Could not extract metrics from report data.</div>'

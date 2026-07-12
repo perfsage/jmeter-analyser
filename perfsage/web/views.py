@@ -13,7 +13,7 @@ from fastapi.templating import Jinja2Templates
 
 from perfsage.config import Settings, get_settings
 from perfsage.core.ai.markdown_render import render_ai_markdown
-from perfsage.core.analysis.slo import SLOConfig
+from perfsage.core.analysis.slo import SLOConfig, load_slo_config
 from perfsage.core.storage.db import ReportStatus, get_engine, get_session
 from perfsage.core.storage.repos import AppSettingsRepo, InsightRepo, ReportRepo
 from perfsage.core.viz.registry import build_figures_json
@@ -109,9 +109,9 @@ async def report_detail(
             or app_settings.get("anthropic_key") is not None
             or app_settings.get("gemini_key") is not None
         )
+        slo_config = load_slo_config(session)
 
     samples_path = file_store.samples_parquet(report_id)
-    slo_config = SLOConfig()
     figures_json: dict[str, Any] = {}
     recommendations: list[Any] = []
     summary_stats: list[dict[str, str]] = []
@@ -162,12 +162,13 @@ async def settings_page(
             configured_providers.append("Anthropic")
         if repo.get("gemini_key"):
             configured_providers.append("Gemini")
+        slo_config = load_slo_config(session)
     return templates.TemplateResponse(
         request,
         "settings.html",
         {
             "configured_providers": configured_providers,
-            "slo": SLOConfig(),
+            "slo": slo_config,
         },
     )
 

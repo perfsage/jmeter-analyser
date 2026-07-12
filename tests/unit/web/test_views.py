@@ -66,3 +66,15 @@ def test_settings_slo_defaults_shown(client: TestClient) -> None:
     # Default SLO values from SLOConfig
     assert "1000" in r.text  # p90_ms default
     assert "3000" in r.text  # p99_ms default
+
+
+def test_settings_page_reflects_saved_slo_defaults(client: TestClient) -> None:
+    r = client.post(
+        "/api/settings/slo",
+        data={"p90_ms": "250", "p99_ms": "800", "error_rate_pct": "0.5", "apdex_t": "0.25"},
+    )
+    assert r.status_code == 200
+    r2 = client.get("/settings")
+    assert r2.status_code == 200
+    assert "250" in r2.text
+    assert "800" in r2.text

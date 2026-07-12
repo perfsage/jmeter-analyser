@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import tempfile
 from dataclasses import dataclass
@@ -9,8 +11,11 @@ from pathlib import Path
 
 import duckdb
 import polars as pl
+from sqlmodel import Session
 
 from perfsage.core.analysis.segmentation import get_steady_state_samples
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -32,6 +37,25 @@ class SLOResult:
     p99_compliant: bool
     error_rate_compliant: bool
     overall_compliant: bool
+
+
+def load_slo_config(session: Session) -> SLOConfig:
+    """Load the persisted SLO defaults saved via POST /api/settings/slo.
+
+    Falls back to SLOConfig() defaults if nothing has been saved yet, or if
+    the stored value is malformed.
+    """
+    from perfsage.core.storage.repos import AppSettingsRepo
+
+    raw = AppSettingsRepo(session).get("slo_defaults")
+    if not raw:
+        return SLOConfig()
+    try:
+        data = json.loads(raw)
+        return SLOConfig(**data)
+    except (ValueError, TypeError) as exc:
+        logger.warning("Malformed slo_defaults setting (%s); using SLOConfig defaults", exc)
+        return SLOConfig()
 
 
 def compute_apdex(

@@ -80,3 +80,44 @@ def test_slo_custom_thresholds(sample_parquet_fast: Path) -> None:
     results = compute_slo_compliance(sample_parquet_fast, cfg)
     # Fast data: elapsed 20-49ms → p90 < 100, p99 < 200.
     assert all(r.p90_compliant for r in results)
+
+
+# ---------------------------------------------------------------------------
+# load_slo_config tests
+# ---------------------------------------------------------------------------
+
+
+def test_load_slo_config_returns_default_when_unset(test_settings):
+    from perfsage.core.storage.db import get_engine, get_session
+    from perfsage.core.analysis.slo import SLOConfig, load_slo_config
+
+    engine = get_engine(test_settings.database_url)
+    with get_session(engine) as session:
+        config = load_slo_config(session)
+    assert config == SLOConfig()
+
+
+def test_load_slo_config_round_trips_saved_settings(test_settings):
+    from perfsage.core.storage.db import get_engine, get_session
+    from perfsage.core.storage.repos import AppSettingsRepo
+    from perfsage.core.analysis.slo import SLOConfig, load_slo_config
+    import json
+
+    engine = get_engine(test_settings.database_url)
+    saved = SLOConfig(p90_ms=250.0, p99_ms=800.0, error_rate_pct=0.5, apdex_t=0.25)
+    with get_session(engine) as session:
+        AppSettingsRepo(session).set("slo_defaults", json.dumps(saved.__dict__))
+        config = load_slo_config(session)
+    assert config == saved
+
+
+def test_load_slo_config_falls_back_on_malformed_json(test_settings):
+    from perfsage.core.storage.db import get_engine, get_session
+    from perfsage.core.storage.repos import AppSettingsRepo
+    from perfsage.core.analysis.slo import SLOConfig, load_slo_config
+
+    engine = get_engine(test_settings.database_url)
+    with get_session(engine) as session:
+        AppSettingsRepo(session).set("slo_defaults", "{not valid json")
+        config = load_slo_config(session)
+    assert config == SLOConfig()
