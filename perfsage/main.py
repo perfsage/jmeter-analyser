@@ -78,6 +78,13 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
 
     _ensure_kaleido_browser()
 
+    import kaleido
+
+    from perfsage.core.export._kaleido_session import kaleido_server_running
+
+    if not kaleido_server_running():
+        kaleido.start_sync_server(silence_warnings=True)
+
     # Ensure data subdirectories exist.
     for sub in ("uploads", "exports", "cache", "parquet"):
         (cfg.data_dir / sub).mkdir(parents=True, exist_ok=True)
@@ -119,7 +126,13 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    # Shutdown: close Redis pool.
+    # Shutdown: close Redis pool and Kaleido browser.
+    import kaleido
+
+    from perfsage.core.export._kaleido_session import kaleido_server_running
+
+    if kaleido_server_running():
+        kaleido.stop_sync_server(silence_warnings=True)
     await redis_pool.aclose()
     logger.info("PerfSage shutdown complete")
 

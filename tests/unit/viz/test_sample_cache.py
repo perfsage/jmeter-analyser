@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import polars as pl
-import pytest
 
 
 def _write(path, elapsed):

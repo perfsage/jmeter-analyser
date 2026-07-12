@@ -24,5 +24,7 @@ alwaysApply: true
 - Central figure list: `perfsage/core/viz/registry.py` — `EXPORT_FIGURES` (29 charts), `build_figure_objects`, `build_figures_json`; iterate `for fid, _ in EXPORT_FIGURES`.
 - Per-label scatter colors: `LABEL_COLORS`; stacked expert series: `LABEL_PALETTE` in `_theme.py`; expert charts in `expert.py`.
 - **supervisord `environment=` replaces the entire env** — include `HOME=/home/perfsage`, `BROWSER_PATH`/`CHROME_PATH` for web+worker or kaleido PDF charts fail (`Permission denied` on `/root/.local/share/choreographer/...`).
+- **PDF/kaleido:** use `render_chart_pngs()` + `kaleido.write_fig_from_object_sync` (one browser session); `fig.write_image()` alone respawns Chromium ~2.5 s/chart. Cross-process lock: `perfsage/core/export/_kaleido_session.py`. App lifespan starts `kaleido.start_sync_server()`.
+- **Slow tests:** `pytest-timeout` (120s default); HTML export must not assert `"cdn.plot.ly" not in content` (embedded plotly.min.js contains that string; assert no external `<script src="https://cdn.plot.ly` instead).
 - **Versioning:** repo-root `VERSION` file → hatch `pyproject.toml`, `perfsage/_version.py`, Docker `ARG PERFSAGE_VERSION`, Hub tags via `.github/workflows/docker-publish.yml`.
 - **Product:** **PerfSage Reveal** — GitHub `perfsage/reveal`, Docker `perfsage/reveal`.

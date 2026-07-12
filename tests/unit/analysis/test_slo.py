@@ -88,8 +88,8 @@ def test_slo_custom_thresholds(sample_parquet_fast: Path) -> None:
 
 
 def test_load_slo_config_returns_default_when_unset(test_settings):
-    from perfsage.core.storage.db import get_engine, get_session
     from perfsage.core.analysis.slo import SLOConfig, load_slo_config
+    from perfsage.core.storage.db import get_engine, get_session
 
     engine = get_engine(test_settings.database_url)
     with get_session(engine) as session:
@@ -98,10 +98,11 @@ def test_load_slo_config_returns_default_when_unset(test_settings):
 
 
 def test_load_slo_config_round_trips_saved_settings(test_settings):
+    import json
+
+    from perfsage.core.analysis.slo import SLOConfig, load_slo_config
     from perfsage.core.storage.db import get_engine, get_session
     from perfsage.core.storage.repos import AppSettingsRepo
-    from perfsage.core.analysis.slo import SLOConfig, load_slo_config
-    import json
 
     engine = get_engine(test_settings.database_url)
     saved = SLOConfig(p90_ms=250.0, p99_ms=800.0, error_rate_pct=0.5, apdex_t=0.25)
@@ -112,9 +113,9 @@ def test_load_slo_config_round_trips_saved_settings(test_settings):
 
 
 def test_load_slo_config_falls_back_on_malformed_json(test_settings):
+    from perfsage.core.analysis.slo import SLOConfig, load_slo_config
     from perfsage.core.storage.db import get_engine, get_session
     from perfsage.core.storage.repos import AppSettingsRepo
-    from perfsage.core.analysis.slo import SLOConfig, load_slo_config
 
     engine = get_engine(test_settings.database_url)
     with get_session(engine) as session:

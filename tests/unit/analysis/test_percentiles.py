@@ -62,6 +62,7 @@ def test_percentiles_slow_data(sample_parquet_slow: Path) -> None:
 
 def test_compute_overall_percentiles_empty_file_returns_zeros(tmp_path):
     import polars as pl
+
     from perfsage.core.analysis.percentiles import compute_overall_percentiles
 
     empty = pl.DataFrame({"elapsed": pl.Series([], dtype=pl.Int64)})

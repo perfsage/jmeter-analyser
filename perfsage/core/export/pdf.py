@@ -75,7 +75,13 @@ def _ensure_kaleido_browser() -> None:
 def _fig_to_png_path(fig: object, tmp_dir: Path, fig_id: str) -> Path | None:
     """Render a Plotly figure to PNG on disk for WeasyPrint embedding."""
     try:
+        import kaleido
         import plotly.graph_objects as go
+
+        from perfsage.core.export._kaleido_session import (
+            kaleido_process_lock,
+            managed_kaleido_server,
+        )
 
         if not isinstance(fig, go.Figure):
             return None
@@ -83,7 +89,9 @@ def _fig_to_png_path(fig: object, tmp_dir: Path, fig_id: str) -> Path | None:
         _ensure_kaleido_browser()
 
         png_path = tmp_dir / f"{fig_id}.png"
-        fig.write_image(str(png_path), format="png", width=900, height=400, scale=1.5)
+        opts = {"format": "png", "width": 900, "height": 400, "scale": 1.5}
+        with kaleido_process_lock(), managed_kaleido_server():
+            kaleido.write_fig_sync(fig, path=str(png_path), opts=opts)
         png_bytes = png_path.read_bytes()
         if not png_bytes.startswith(b"\x89PNG"):
             logger.warning("PDF: invalid PNG header for %s", fig_id)
@@ -92,6 +100,68 @@ def _fig_to_png_path(fig: object, tmp_dir: Path, fig_id: str) -> Path | None:
     except Exception as exc:
         logger.warning("PDF: kaleido failed for %s: %s", fig_id, exc)
         return None
+
+
+def render_chart_pngs(
+    figure_objs: dict[str, object | None],
+    tmp_dir: Path,
+) -> tuple[list[tuple[str, str, Path | None]], int]:
+    """Render all export figures to PNG in one Kaleido browser session."""
+    import kaleido
+    import plotly.graph_objects as go
+
+    from perfsage.core.export._kaleido_session import (
+        kaleido_process_lock,
+        managed_kaleido_server,
+    )
+
+    _ensure_kaleido_browser()
+
+    chart_imgs: list[tuple[str, str, Path | None]] = []
+    fig_dicts: list[dict[str, object]] = []
+    pending: list[tuple[str, str, Path]] = []
+
+    for fig_id, fig_title in EXPORT_FIGURES:
+        fig = figure_objs.get(fig_id)
+        if fig is None or not isinstance(fig, go.Figure):
+            chart_imgs.append((fig_id, fig_title, None))
+            continue
+
+        png_path = tmp_dir / f"{fig_id}.png"
+        fig_dicts.append(
+            {
+                "fig": fig,
+                "path": str(png_path),
+                "opts": {"format": "png", "width": 900, "height": 400, "scale": 1.5},
+            }
+        )
+        pending.append((fig_id, fig_title, png_path))
+
+    if fig_dicts:
+        try:
+            with kaleido_process_lock(), managed_kaleido_server():
+                kaleido.write_fig_from_object_sync(fig_dicts)
+        except Exception as exc:
+            logger.warning("PDF: batch kaleido render failed: %s", exc)
+            for fig_id, fig_title, _png_path in pending:
+                chart_imgs.append((fig_id, fig_title, None))
+            return chart_imgs, 0
+
+    rendered = 0
+    for fig_id, fig_title, png_path in pending:
+        try:
+            png_bytes = png_path.read_bytes()
+            if png_bytes.startswith(b"\x89PNG"):
+                chart_imgs.append((fig_id, fig_title, png_path))
+                rendered += 1
+            else:
+                logger.warning("PDF: invalid PNG header for %s", fig_id)
+                chart_imgs.append((fig_id, fig_title, None))
+        except Exception as exc:
+            logger.warning("PDF: could not read PNG for %s: %s", fig_id, exc)
+            chart_imgs.append((fig_id, fig_title, None))
+
+    return chart_imgs, rendered
 
 
 def _render_summary_table(samples_path: Path) -> str:
@@ -328,14 +398,7 @@ def generate_pdf_report(
             else {fid: None for fid, _ in EXPORT_FIGURES}
         )
 
-        chart_imgs: list[tuple[str, str, Path | None]] = []
-        rendered = 0
-        for fig_id, fig_title in EXPORT_FIGURES:
-            fig = figure_objs.get(fig_id)
-            png_path = _fig_to_png_path(fig, tmp_dir, fig_id) if fig is not None else None
-            if png_path is not None:
-                rendered += 1
-            chart_imgs.append((fig_id, fig_title, png_path))
+        chart_imgs, rendered = render_chart_pngs(figure_objs, tmp_dir)
 
         if data_available and rendered == 0:
             logger.error(

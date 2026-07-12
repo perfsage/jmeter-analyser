@@ -1,6 +1,7 @@
 """Unit tests for PDF export functionality."""
 
 import os
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -9,6 +10,7 @@ import pytest
 
 
 @pytest.mark.slow
+@pytest.mark.timeout(180)
 def test_generate_pdf_report_creates_file(tmp_path: Path, sample_parquet: Path) -> None:
     from perfsage.core.export.pdf import generate_pdf_report
 
@@ -41,20 +43,28 @@ def test_pdf_build_html_includes_chart_img(tmp_path: Path, sample_parquet: Path)
 
 
 def test_pdf_fig_to_png_path_handles_failure(tmp_path: Path) -> None:
+    import kaleido
+
     from perfsage.core.export.pdf import _fig_to_png_path
 
     bad_fig = go.Figure()
-    with patch.object(bad_fig, "write_image", side_effect=RuntimeError("kaleido down")):
+    with patch.object(kaleido, "write_fig_sync", side_effect=RuntimeError("kaleido down")):
         assert _fig_to_png_path(bad_fig, tmp_path, "bad") is None
 
 
 def test_pdf_fig_to_png_path_validates_header(tmp_path: Path) -> None:
+    import kaleido
+
     from perfsage.core.export.pdf import _fig_to_png_path
 
     fig = go.Figure(data=[go.Scatter(x=[1], y=[1])])
     png = tmp_path / "ok.png"
     png.write_bytes(b"NOTPNG")
-    with patch.object(fig, "write_image", side_effect=lambda p, **kw: png.write_bytes(b"NOTPNG")):
+
+    def _write_bad_png(*_args: object, **_kwargs: object) -> None:
+        png.write_bytes(b"NOTPNG")
+
+    with patch.object(kaleido, "write_fig_sync", side_effect=_write_bad_png):
         assert _fig_to_png_path(fig, tmp_path, "ok") is None
 
 
@@ -80,7 +90,41 @@ def test_ensure_kaleido_browser_sets_paths(monkeypatch: pytest.MonkeyPatch, tmp_
                 os.environ[key] = value
 
 
+def _weasyprint_available() -> bool:
+    try:
+        import weasyprint
+
+        weasyprint.HTML(string="<html><body>x</body></html>").write_pdf()
+        return True
+    except Exception:
+        return False
+
+
 @pytest.mark.slow
+@pytest.mark.timeout(180)
+def test_render_chart_pngs_batch(tmp_path: Path, sample_parquet: Path) -> None:
+    """Kaleido batch render must reuse one browser (not ~2.5 s per chart)."""
+    from perfsage.core.export.pdf import render_chart_pngs
+    from perfsage.core.viz.registry import build_figure_objects
+
+    objs = build_figure_objects(sample_parquet, None)
+    png_dir = tmp_path / "pngs"
+    png_dir.mkdir()
+
+    started = time.perf_counter()
+    chart_imgs, rendered = render_chart_pngs(objs, png_dir)
+    elapsed = time.perf_counter() - started
+
+    assert rendered >= 25, f"expected most charts rendered, got {rendered}/29"
+    assert elapsed < 45, f"batch render took {elapsed:.1f}s — browser likely restarted per chart"
+    for _fig_id, _title, png_path in chart_imgs:
+        if png_path is not None:
+            assert png_path.read_bytes().startswith(b"\x89PNG")
+
+
+@pytest.mark.slow
+@pytest.mark.timeout(180)
+@pytest.mark.skipif(not _weasyprint_available(), reason="WeasyPrint system libraries not installed")
 def test_generate_pdf_report_embeds_chart_images(tmp_path: Path, sample_parquet: Path) -> None:
     from perfsage.core.export.pdf import generate_pdf_report
 
@@ -89,6 +133,5 @@ def test_generate_pdf_report_embeds_chart_images(tmp_path: Path, sample_parquet:
     content = output.read_bytes()
     assert content[:4] == b"%PDF"
     assert b"Chart rendering failed" not in content
-    assert b"Chart not available." not in content
     assert b"Chart not available." not in content
     assert len(content) > 100_000, "PDF too small — chart images likely missing"

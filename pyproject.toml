@@ -48,6 +48,7 @@ dependencies = [
 test = [
     "pytest>=8.2.2",
     "pytest-asyncio>=0.23.7",
+    "pytest-timeout>=2.3.1",
     "hypothesis>=6.104.2",
     "playwright>=1.44.0",
     "pytest-cov>=5.0.0",
@@ -84,6 +85,11 @@ exclude = ["tests/e2e"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+timeout = 120
+timeout_method = "thread"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+filterwarnings = [
+    "ignore::RuntimeWarning:kaleido",
 ]

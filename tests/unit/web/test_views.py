@@ -80,13 +80,12 @@ def test_settings_page_reflects_saved_slo_defaults(client: TestClient) -> None:
     assert "800" in r2.text
 
 
-def test_report_detail_escapes_malicious_label(
-    client: TestClient, test_settings, tmp_path
-) -> None:
+def test_report_detail_escapes_malicious_label(client: TestClient, test_settings, tmp_path) -> None:
     import polars as pl
+
     from perfsage.core.storage.db import ReportStatus, get_engine, get_session
-    from perfsage.core.storage.repos import ReportRepo
     from perfsage.core.storage.files import FileStore
+    from perfsage.core.storage.repos import ReportRepo
 
     engine = get_engine(test_settings.database_url)
     with get_session(engine) as session:
@@ -119,9 +118,10 @@ def test_report_section_distribution_returns_only_its_charts(
     client: TestClient, test_settings
 ) -> None:
     import polars as pl
+
     from perfsage.core.storage.db import ReportStatus, get_engine, get_session
-    from perfsage.core.storage.repos import ReportRepo
     from perfsage.core.storage.files import FileStore
+    from perfsage.core.storage.repos import ReportRepo
 
     engine = get_engine(test_settings.database_url)
     with get_session(engine) as session:
@@ -158,9 +158,10 @@ def test_report_detail_no_longer_inlines_distribution_charts(
     client: TestClient, test_settings
 ) -> None:
     import polars as pl
+
     from perfsage.core.storage.db import ReportStatus, get_engine, get_session
-    from perfsage.core.storage.repos import ReportRepo
     from perfsage.core.storage.files import FileStore
+    from perfsage.core.storage.repos import ReportRepo
 
     engine = get_engine(test_settings.database_url)
     with get_session(engine) as session:
@@ -184,6 +185,6 @@ def test_report_detail_no_longer_inlines_distribution_charts(
 
     r = client.get(f"/reports/{report_id}")
     assert r.status_code == 200
-    assert 'hx-get="/reports/{}/section/distribution"'.format(report_id) in r.text
+    assert f'hx-get="/reports/{report_id}/section/distribution"' in r.text
     # The initial response must not have already computed the histogram JSON inline.
     assert '"fig-histogram":' not in r.text

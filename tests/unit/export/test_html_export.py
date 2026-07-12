@@ -86,6 +86,7 @@ def test_generate_html_report_escapes_malicious_label(tmp_path: Path) -> None:
 
 
 @pytest.mark.slow
+@pytest.mark.timeout(180)
 def test_generate_html_report_full(tmp_path: Path, sample_parquet: Path) -> None:
     """Single integration test covering HTML export structure (29 charts + inline Plotly)."""
     from perfsage.core.analysis.slo import SLOConfig
@@ -103,7 +104,8 @@ def test_generate_html_report_full(tmp_path: Path, sample_parquet: Path) -> None
     assert "PerfSage" in content
     assert "Test Report" in content
     assert "Plotly.newPlot" in content
-    assert "cdn.plot.ly" not in content
+    # plotly.min.js may mention cdn.plot.ly internally; ensure we did not load it externally.
+    assert '<script src="https://cdn.plot.ly' not in content
     assert "export-footer" in content
     assert "<footer" not in content
     assert "Label" in content and "Count" in content
