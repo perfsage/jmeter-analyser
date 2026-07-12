@@ -12,6 +12,7 @@
   {% block head %}{% endblock %}
 </head>
 <body>
+  <div id="htmx-top-bar"></div>
   <nav class="navbar">
     <a href="/" class="brand">
       <img src="/static/img/perfsage-logo.png" class="logo" alt="PerfSage">
@@ -31,5 +32,25 @@
   <div id="toast-root"></div>
   <script src="/static/js/nudge.js"></script>
   {% block scripts %}{% endblock %}
+  <script>
+    (function () {
+      var bar = document.getElementById("htmx-top-bar");
+      var hideTimeout;
+      document.body.addEventListener("htmx:beforeRequest", function () {
+        clearTimeout(hideTimeout);
+        bar.classList.add("is-active");
+        bar.style.width = "90%";
+      });
+      document.body.addEventListener("htmx:afterOnLoad", function () {
+        bar.style.width = "100%";
+      });
+      document.body.addEventListener("htmx:afterSettle", function () {
+        hideTimeout = setTimeout(function () {
+          bar.classList.remove("is-active");
+          bar.style.width = "0%";
+        }, 200);
+      });
+    })();
+  </script>
 </body>
 </html>

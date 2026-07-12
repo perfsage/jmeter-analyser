@@ -207,3 +207,17 @@ table.data-table tbody tr:nth-child(even) { background: #F7FAFC; }
 .chart-card [id^="fig-"].chart-loaded {
   opacity: 1;
 }
+
+/* Global HTMX top progress bar */
+#htmx-top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: var(--amber);
+  z-index: 10000;
+  opacity: 0;
+  transition: width var(--dur-slow) var(--ease-out), opacity var(--dur-fast) linear;
+}
+#htmx-top-bar.is-active { opacity: 1; }
