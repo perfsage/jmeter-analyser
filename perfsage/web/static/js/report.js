@@ -49,7 +49,9 @@
     document.querySelectorAll(".report-section-toggle").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var section = btn.closest(".report-section");
-        if (section) section.classList.toggle("collapsed");
+        if (!section) return;
+        var collapsed = section.classList.toggle("collapsed");
+        btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
       });
     });
   });

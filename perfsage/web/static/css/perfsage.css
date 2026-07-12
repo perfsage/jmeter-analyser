@@ -111,8 +111,18 @@ table.data-table tbody tr:nth-child(even) { background: #F7FAFC; }
 .report-section-toggle h2 { margin: 0; font-size: 1.125rem; font-weight: 600; }
 .section-chevron { font-size: 0.75rem; transition: transform 0.2s; }
 .report-section.collapsed .section-chevron { transform: rotate(-90deg); }
-.report-section.collapsed .report-section-body { display: none; }
 .report-section-body { background: transparent; padding-top: 1rem; }
+.report-section-body {
+  max-height: 100000px;
+  opacity: 1;
+  overflow: hidden;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+.report-section.collapsed .report-section-body {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+}
 
 /* Chart cards */
 .chart-card { border-top: 3px solid var(--navy); }
