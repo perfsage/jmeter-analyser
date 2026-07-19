@@ -26,5 +26,7 @@ alwaysApply: true
 - **supervisord `environment=` replaces the entire env** — include `HOME=/home/perfsage`, `BROWSER_PATH`/`CHROME_PATH` for web+worker or kaleido PDF charts fail (`Permission denied` on `/root/.local/share/choreographer/...`).
 - **PDF/kaleido:** use `render_chart_pngs()` + `kaleido.write_fig_from_object_sync` (one browser session); `fig.write_image()` alone respawns Chromium ~2.5 s/chart. Cross-process lock: `perfsage/core/export/_kaleido_session.py`. App lifespan starts `kaleido.start_sync_server()`.
 - **Slow tests:** `pytest-timeout` (120s default); HTML export must not assert `"cdn.plot.ly" not in content` (embedded plotly.min.js contains that string; assert no external `<script src="https://cdn.plot.ly` instead).
+- **Report charts:** `report.js` is deferred; mount `#figures-data` on `DOMContentLoaded` only — never call `PerfSageReport.mountFigures` from an inline content-block script (race → charts stuck at `opacity: 0`). Cache-bust with `?v={{ request.app.version }}`.
 - **Versioning:** repo-root `VERSION` file → hatch `pyproject.toml`, `perfsage/_version.py`, Docker `ARG PERFSAGE_VERSION`, Hub tags via `.github/workflows/docker-publish.yml`.
-- **Product:** **PerfSage Reveal** — GitHub `perfsage/reveal`, Docker `perfsage/reveal`.
+- **Product:** **PerfSage Reveal** — GitHub `perfsage/reveal`; published Docker image `aashu3201/reveal` (site/CHANGELOG may say `perfsage/reveal` as brand name).
+- **README marketing:** hero screenshot + Docker CTA above the fold; symptom→chart→KPI table; assets in `docs/assets/readme/`; align copy with https://perfsage.com/reveal/; ASF JMeter trademark in footer.

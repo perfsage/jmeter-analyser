@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ report.name }} — PerfSage{% endblock %}
 {% block head %}
-<script src="/static/js/report.js" defer></script>
+<script src="/static/js/report.js?v={{ request.app.version }}" defer></script>
 {% endblock %}
 {% block content %}
 <div class="report-sticky-header">
@@ -227,7 +227,5 @@
 </section>
 
 <script type="application/json" id="figures-data">{{ figures_json | safe }}</script>
-<script>
-PerfSageReport.mountFigures(document.getElementById("figures-data"));
-</script>
+{# Mounted by report.js on DOMContentLoaded — do not call mountFigures here while report.js is deferred. #}
 {% endblock %}

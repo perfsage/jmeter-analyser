@@ -13,19 +13,39 @@
       return;
     }
     for (var divId in figs) {
+      if (!Object.prototype.hasOwnProperty.call(figs, divId)) continue;
       var figJson = figs[divId];
       var el = document.getElementById(divId);
       if (!figJson || !el) continue;
-      Plotly.newPlot(el, figJson.data, figJson.layout, {
-        responsive: true,
-        displayModeBar: true,
-      }).then(function (gd) {
-        gd.classList.add("chart-loaded");
-      });
+      var markLoaded = function (gd) {
+        (gd || el).classList.add("chart-loaded");
+      };
+      try {
+        var plotPromise = Plotly.newPlot(el, figJson.data, figJson.layout, {
+          responsive: true,
+          displayModeBar: true,
+        });
+        if (plotPromise && typeof plotPromise.then === "function") {
+          plotPromise.then(markLoaded).catch(function (err) {
+            console.error("PerfSage: Plotly.newPlot failed for", divId, err);
+            markLoaded(el);
+          });
+        } else {
+          markLoaded(el);
+        }
+      } catch (err) {
+        console.error("PerfSage: Plotly.newPlot failed for", divId, err);
+        markLoaded(el);
+      }
     }
   };
 
   document.addEventListener("DOMContentLoaded", function () {
+    // Initial report page figures — must run after deferred report.js loads.
+    // Do not call mountFigures from an inline script in the content block while
+    // report.js uses defer; that race leaves charts at opacity:0 forever.
+    window.PerfSageReport.mountFigures(document.getElementById("figures-data"));
+
     document.querySelectorAll(".chart-tabs").forEach(function (tabs) {
       var buttons = tabs.querySelectorAll(".chart-tab-btn");
       var panels = tabs.querySelectorAll(".chart-tab-panel");

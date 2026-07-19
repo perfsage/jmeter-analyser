@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from fastapi.testclient import TestClient
 
 
@@ -152,6 +154,53 @@ def test_report_section_distribution_returns_only_its_charts(
 def test_report_section_unknown_id_returns_404(client: TestClient) -> None:
     r = client.get("/reports/nonexistent/section/not-a-real-section")
     assert r.status_code == 404
+
+
+def test_report_detail_does_not_race_deferred_report_js_with_inline_mount(
+    client: TestClient, test_settings
+) -> None:
+    """Regression: deferred report.js + inline mountFigures left charts at opacity:0.
+
+    If report.js uses defer, the content-block inline mount runs during HTML parse
+    before PerfSageReport exists, so Plotly never mounts and CSS keeps charts invisible.
+    """
+    import polars as pl
+
+    from perfsage.core.storage.db import ReportStatus, get_engine, get_session
+    from perfsage.core.storage.files import FileStore
+    from perfsage.core.storage.repos import ReportRepo
+
+    engine = get_engine(test_settings.database_url)
+    with get_session(engine) as session:
+        report = ReportRepo(session).create("mount.csv", "mount.csv", 10)
+        ReportRepo(session).update_stats(
+            report.id, status=ReportStatus.READY, parsed_row_count=2, row_count=2
+        )
+        report_id = report.id
+
+    file_store = FileStore(test_settings.data_dir)
+    samples_path = file_store.samples_parquet(report_id)
+    samples_path.parent.mkdir(parents=True, exist_ok=True)
+    pl.DataFrame(
+        {
+            "timestamp_ms": [1_700_000_000_000, 1_700_000_001_000],
+            "elapsed": [100, 200],
+            "label": ["Home", "Home"],
+            "success": [True, True],
+        }
+    ).write_parquet(samples_path)
+
+    r = client.get(f"/reports/{report_id}")
+    assert r.status_code == 200
+    assert 'id="figures-data"' in r.text
+    # Must not call mountFigures from the content block while report.js is deferred.
+    has_deferred_report_js = (
+        re.search(r'src="/static/js/report\.js[^"]*"\s+defer', r.text) is not None
+    )
+    has_inline_mount = "PerfSageReport.mountFigures(document.getElementById(" in r.text
+    assert not (has_deferred_report_js and has_inline_mount), (
+        "deferred report.js + inline mountFigures races and leaves charts invisible"
+    )
 
 
 def test_report_detail_no_longer_inlines_distribution_charts(
